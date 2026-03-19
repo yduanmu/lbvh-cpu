@@ -1,7 +1,7 @@
 # lbvh-cpu
 An implementation of LBVH from [Karras 2012](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf). Parallel on the CPU.
 
-The LBVH algorithm itself reduces BVH construction to a sorting problem, while Karras’s addition maximizes parallelization by generating the entire binary radix tree in parallel, which is used as a building block for other trees (such as BVH). Karras’s algorithm allows the BVH to be constructed in two kernel launches, one for the binary radix tree and one for AABB fitting. Again, I will be adapting Karras’s algorithm for, and implementing it on, the CPU.
+The linear bounding volume hierarchy (LBVH) algorithm itself reduces bounding volume hierarchy (BVH) construction to a sorting problem, while Karras’s addition maximizes parallelization by generating the entire binary radix tree in parallel, which is used as a building block for other trees (such as BVH). Karras’s algorithm allows the BVH to be constructed in two kernel launches, one for the binary radix tree and one for AABB fitting. Again, I will be adapting Karras’s algorithm for, and implementing it on, the CPU.
 
 ## Algorithm & Planning
 Karras’s algorithm builds the LBVH using three stages, each parallelizable:
