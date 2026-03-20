@@ -10,10 +10,13 @@ I have outlined the four parallelizable stages of Karras 2012 below:
 **1. Computation of Morton (Z-order) codes**
   - Sort the input set, which is in this case the $(x, y, z)$ coordinates of each primitive’s centroid, by Z-order. If primitive locations overlap, the algorithm uses “extended” indices where the object index is appended as a bit to the Z-order code.
   - This is embarassingly parallel.
+
 **3. Sorting of Z-order codes**
   - When analyzing the parallelization implications of this stage, I plan to compare parallel radix sort against (sequential) `std::sort`.
+
 **4. Construction of binary radix tree**
   - Determine range of keys (Z-order codes) covered by each internal node, as well as its children. This section is parallel on each inner node.
+
 **5. AABB fitting for BVH construction**
   - In the original GPU algorithm, paths from leaf nodes to root are processed in parallel where threads walk up the tree using parent pointers recorded during radix tree construction. The first thread terminates while the second processes the node. Global atomic counters are used to track the number of threads that visited each internal node, but can reduce the number of these counters by instead tracking in shared-memory whether all leaves covered by one given node are being processed by the same thread blocks. With one thread calculating each node, Karras obtains $O(n)$ time complexity.
     - One node per thread isn’t scalable on the CPU. I plan to divide-and-conquer the binary radix tree. First a breadth-first scan to identify subtrees. Allow threads to traverse the subtrees belonging to each sub-root node until they have reached it (fuzzy barrier). I will use iterative post-order traversal to keep Karras’s depth-first order for data locality and cache hit rates.
