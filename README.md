@@ -1,23 +1,30 @@
 # lbvh-cpu
 An implementation of LBVH from [Karras 2012](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf). Parallel on the CPU.
 
-The linear bounding volume hierarchy (LBVH) algorithm itself reduces bounding volume hierarchy (BVH) construction to a sorting problem, while Karras’s addition maximizes parallelization by generating the entire binary radix tree in parallel, which is used as a building block for other trees (such as BVH). Karras’s algorithm allows the BVH to be constructed in two kernel launches, one for the binary radix tree and one for AABB fitting. Again, I will be adapting Karras’s algorithm for, and implementing it on, the CPU.
+Linear bounding volume hierarchy (LBVH) construction reduces bounding volume hierarchy (BVH) construction to a sorting problem, while Karras’s addition in 2012 \[1] maximizes parallelization by generating the entire binary radix tree in parallel, which is used as a building block for other trees (such as BVH). This allows the BVH to be constructed in two kernel launches, one for the binary radix tree and one for axis-aligned bounding box (AABB) fitting. Though there have been improvements regarding both bottom-up BVH construction time and tree quality optimization \[2], Karras 2012 provides a uniquely clear four-stage approach while maximizing parallelism.
 
-## Algorithm & Planning
-Karras’s algorithm builds the LBVH using three stages, each parallelizable:
-1. **Computation of Morton (Z-order) codes**
+By adapting Karras’s algorithm for, and implementing it on, the CPU, I intend to analyze the performance implications of each parallelizable stage of the algorithm. Furthermore, I plan to compare construction and traversal time against binned surface area heuristic (SAH) BVH, which is a top-down algorithm traditionally implemented sequentially.
+
+I have outlined the four parallelizable stages of Karras 2012 below:
+
+**1. Computation of Morton (Z-order) codes**
   - Sort the input set, which is in this case the $(x, y, z)$ coordinates of each primitive’s centroid, by Z-order. If primitive locations overlap, the algorithm uses “extended” indices where the object index is appended as a bit to the Z-order code.
-2. **Construction of binary radix trees**
-  - //TBA
-3. **AABB fitting for BVH construction**
-  - Paths from leaf nodes to root are processed in parallel; threads walk up the tree using parent pointers recorded during radix tree construction. The first thread terminates while the second processes the node. Global atomic counters are used to track the number of threads that visited each internal node, but can reduce the number of these counters by instead tracking in shared-memory whether all leaves covered by one given node are being processed by the same thread blocks. With one thread calculating each node, Karras obtains $O(n)$ time complexity.
-    - One node per thread isn’t scalable on the CPU. I plan to use Karras’s atomic counter optimization for threads. That is, I plan to “split” the radix tree on some certain parent nodes, and allow threads to traverse the subtree until they have reached that parent node (fuzzy barrier).
-      - **Problem**: I might get an extremely unbalanced tree that leaves threads idle for lengths of time even with a fuzzy barrier.
-    - Post-order traversal. I’d have to include a child pointer during radix tree construction so it is a threaded tree ([Istrate slide 31](https://gabrielistrate.weebly.com/uploads/2/5/2/6/2526487/curs7.pdf)). Also conveniently avoids recursion. Post-order traversal keeps Karras’s depth-first order for data locality and cache hit rates.
+  - This is embarassingly parallel.
+**3. Sorting of Z-order codes**
+  - When analyzing the parallelization implications of this stage, I plan to compare parallel radix sort against (sequential) `std::sort`.
+**4. Construction of binary radix tree**
+  - Determine range of keys (Z-order codes) covered by each internal node, as well as its children. This section is parallel on each inner node.
+**5. AABB fitting for BVH construction**
+  - In the original GPU algorithm, paths from leaf nodes to root are processed in parallel where threads walk up the tree using parent pointers recorded during radix tree construction. The first thread terminates while the second processes the node. Global atomic counters are used to track the number of threads that visited each internal node, but can reduce the number of these counters by instead tracking in shared-memory whether all leaves covered by one given node are being processed by the same thread blocks. With one thread calculating each node, Karras obtains $O(n)$ time complexity.
+    - One node per thread isn’t scalable on the CPU. I plan to divide-and-conquer the binary radix tree. First a breadth-first scan to identify subtrees. Allow threads to traverse the subtrees belonging to each sub-root node until they have reached it (fuzzy barrier). I will use iterative post-order traversal to keep Karras’s depth-first order for data locality and cache hit rates.
+    - In the case of an extremely unbalanced tree, threads should be able to peek at the traversals of other threads in order to determine whether work stealing will be efficient.
 
-## Goals:
-- Efficiency gained by parallelization at each stage.
-- Plot the speedup curve for threads. I expect to see diminishing returns beyond some amount of threads because the algorithm was designed expecting a GPU memory layout.
-- If I have time, I plan to implement a sequential (binned SAH) BVH and compare as well. It’s known that SAH BVH > LBVH in terms of tree quality (50% without treelet restructuring and 97% with ([Karras & Aila 2013](https://research.nvidia.com/sites/default/files/pubs/2013-07_Fast-Parallel-Construction/karras2013hpg_paper.pdf)), but I’m interested in timing the two performing both construction and traversal on the same hardware. If I don’t have time to implement SAH BVH, I’ll use a centroid BVH instead. It results in worse trees than SAH BVH.
-  - I will also be consulting [Miester & Bittner 2022](https://jcgt.org/published/0011/04/01/paper.pdf), which is “Performance Comparison of Bounding Volume Hierarchies for GPU Ray Tracing”.
-  - While a HLBVH (LBVH that uses SAH) results in a better tree, it’s not as parallelizable on account of SAH being sequential. This is why I am instead implementing an LBVH.
+**Goals of this project**:
+- Analyze the efficiency gained by parallelization at each stage.
+- Plot the speedup curve for threads and measure memory bandwidth. I expect to see diminishing returns beyond some amount of threads because the algorithm was designed expecting a GPU memory layout.
+- Other than testing big and small meshes, the LBVH should be tested against meshes with primitives that are uniform, clustered, or overlapping.
+- Comparison against the traditional CPU BVH-building algorithm. It’s known that a sweeping SAH BVH produces trees of good quality, though binning is an acceptable tradeoff to improve speed. Meanwhile, building with an LBVH results in sub-optimal tree quality \[2].
+
+**References**:
+\[1] https://doi.org/10.2312/EGGH/HPG12/033-037
+\[2] https://doi.org/10.1111/cgf.142662
