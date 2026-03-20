@@ -28,6 +28,8 @@ I have outlined the four parallelizable stages of Karras 2012 below:
 - Other than testing big and small meshes, the LBVH should be tested against meshes with primitives that are uniform, clustered, or overlapping.
 - Comparison against the traditional CPU BVH-building algorithm. It’s known that a sweeping SAH BVH produces trees of good quality, though binning is an acceptable tradeoff to improve speed. Meanwhile, building with an LBVH results in sub-optimal tree quality \[2].
 
-**References**:
+## References:
+
 \[1] https://doi.org/10.2312/EGGH/HPG12/033-037
+
 \[2] https://doi.org/10.1111/cgf.142662
