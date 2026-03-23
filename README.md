@@ -19,7 +19,7 @@ Assumes geometry is already loaded and represented in memory. `util/normalize.cp
 - [ ] Writeup
 
 ## Project Proposal
-Linear bounding volume hierarchy (LBVH) construction reduces bounding volume hierarchy (BVH) construction to a sorting problem, while Karras’s addition in 2012 [Kar12](https://doi.org/10.2312/EGGH/HPG12/033-037) maximizes parallelization by generating the entire binary radix tree in parallel, which is used as a building block for other trees (such as BVH). This allows the BVH to be constructed in two kernel launches, one for the binary radix tree and one for axis-aligned bounding box (AABB) fitting. Though there have been improvements regarding both bottom-up BVH construction time and tree quality optimization [MOB*21](https://doi.org/10.1111/cgf.142662), Karras 2012 provides a uniquely clear four-stage approach while maximizing parallelism.
+Linear bounding volume hierarchy (LBVH) construction reduces bounding volume hierarchy (BVH) construction to a sorting problem, while Karras’s addition in 2012 [[Kar12](https://doi.org/10.2312/EGGH/HPG12/033-037)] maximizes parallelization by generating the entire binary radix tree in parallel, which is used as a building block for other trees (such as BVH). This allows the BVH to be constructed in two kernel launches, one for the binary radix tree and one for axis-aligned bounding box (AABB) fitting. Though there have been improvements regarding both bottom-up BVH construction time and tree quality optimization [[MOB*21](https://doi.org/10.1111/cgf.142662)], Karras 2012 provides a uniquely clear four-stage approach while maximizing parallelism.
 
 By adapting Karras’s algorithm for, and implementing it on, the CPU, I intend to analyze the performance implications of each parallelizable stage of the algorithm. Furthermore, I plan to compare construction and traversal time against binned surface area heuristic (SAH) BVH, which is a top-down algorithm traditionally implemented sequentially.
 
@@ -44,10 +44,10 @@ I have outlined the four parallelizable stages of Karras 2012 below:
 - Analyze the efficiency gained by parallelization at each stage.
 - Plot the speedup curve for threads and measure memory bandwidth. I expect to see diminishing returns beyond some amount of threads because the algorithm was designed expecting a GPU memory layout.
 - Other than testing big and small meshes, the LBVH should be tested against meshes with primitives that are uniform, clustered, or overlapping.
-- Comparison against the traditional CPU BVH-building algorithm. It’s known that a sweeping SAH BVH produces trees of good quality, though binning is an acceptable tradeoff to improve speed. Meanwhile, building with an LBVH results in sub-optimal tree quality \[MOB*21](https://doi.org/10.1111/cgf.142662).
+- Comparison against the traditional CPU BVH-building algorithm. It’s known that a sweeping SAH BVH produces trees of good quality, though binning is an acceptable tradeoff to improve speed. Meanwhile, building with an LBVH results in sub-optimal tree quality [[MOB*21](https://doi.org/10.1111/cgf.142662)].
 
 ## References:
 
-- [Kar12](https://doi.org/10.2312/EGGH/HPG12/033-037)
-- [MOB*21](https://doi.org/10.1111/cgf.142662)
+- [[Kar12](https://doi.org/10.2312/EGGH/HPG12/033-037)]
+- [[MOB*21](https://doi.org/10.1111/cgf.142662)]
 - [rapidobj](https://github.com/guybrush77/rapidobj)
