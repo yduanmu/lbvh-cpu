@@ -11,11 +11,11 @@ An implementation of LBVH from [Karras 2012](https://research.nvidia.com/sites/d
 Assumes geometry is already loaded and represented in memory. `util/normalize.cpp` uses the triangulated output from [rapidobj](https://github.com/guybrush77/rapidobj), and discards everything aside from triangle positions and indices.
 
 ## TODO
-- [] Example normalize input for testing and debugging
-- [] Compute Z-order codes
-- [] Sort Z-order codes
-- [] Construct binary radix tree
-- [] Construct BVH
+- [ ] Example normalize input for testing and debugging
+- [ ] Compute Z-order codes
+- [ ] Sort Z-order codes
+- [ ] Construct binary radix tree
+- [ ] Construct BVH
 
 ## Project Proposal
 Linear bounding volume hierarchy (LBVH) construction reduces bounding volume hierarchy (BVH) construction to a sorting problem, while Karras’s addition in 2012 \[1] maximizes parallelization by generating the entire binary radix tree in parallel, which is used as a building block for other trees (such as BVH). This allows the BVH to be constructed in two kernel launches, one for the binary radix tree and one for axis-aligned bounding box (AABB) fitting. Though there have been improvements regarding both bottom-up BVH construction time and tree quality optimization \[2], Karras 2012 provides a uniquely clear four-stage approach while maximizing parallelism.
