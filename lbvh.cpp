@@ -1,12 +1,11 @@
-#include <bits/getopt_core.h>
 #include <iostream>
 #include <unistd.h>
-#include <getopt.h>
 #include <string>
+#include <chrono>
 
 using std::cout;
 using std::cerr;
-using namespace std;
+using std::endl;
 
 // ===============================================================
 // Command-line config
@@ -41,11 +40,33 @@ Config parse_args(int argc, char** argv) {
 	int ch;
 	while ((ch = getopt(argc, argv, "t:csrbh")) != -1) {
 		try {
-			//
-		}
-	} catch (std::exception const& ex) {
+			switch(static_cast<char>(ch)){
+				case 't':
+					cfg.num_threads = std::stoi(optarg);
+					break;
+				case 'c':
+					cfg.comp_zorder = false;
+					break;
+				case 's':
+					cfg.sort_zorder = false;
+					break;
+				case 'r':
+					cfg.cons_radix = false;
+					break;
+				case 'b':
+					cfg.cons_bvh = false;
+					break;
+				case 'h':
+				case '?':
+					usage();
+			}
+		} catch (std::exception const& ex) {
+		cerr << "invalid argument to -" << static_cast<char>(ch)
+			 << ": " << optarg << endl;
 		usage();
+		}
 	}
+	return cfg;
 }
 
 // ===============================================================
@@ -53,4 +74,11 @@ Config parse_args(int argc, char** argv) {
 // ===============================================================
 
 int main(int argc, char** argv) {
+	auto cfg = parse_args(argc, argv);
+
+	//only thread 0 should time things
+	std::chrono::steady_clock::time_point start;
+	start = std::chrono::steady_clock::now();
+	auto end = std::chrono::steady_clock::now();
+	std::chrono::duration<double> elapsed = end - start;
 }
