@@ -1,6 +1,6 @@
 CXX = mpic++
-CXXFLAGS = -std=c++20
-SOURCE = $(wildcard *.cpp) $(wildcard lbvh/*.cpp) $(wildcard util/*.cpp)
+CXXFLAGS = -std=c++20 -Iinclude
+SOURCE = $(wildcard src/*.cpp) $(wildcard src/lbvh/*.cpp) $(wildcard src/util/*.cpp)
 OBJECTS = $(SOURCE:.cpp=.o)
 TARGET = lbvh
 
