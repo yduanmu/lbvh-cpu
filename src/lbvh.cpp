@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string>
 #include <chrono>
+#include "util/normalize.hpp"
 
 using std::cout;
 using std::cerr;

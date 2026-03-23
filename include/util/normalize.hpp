@@ -1,0 +1,4 @@
+#ifndef LBVH_NORMALIZE_HPP
+#define LBVH_NORMALIZE_HPP
+
+#endif // LBVH_NORMALIZE_HPP

@@ -10,8 +10,12 @@ An implementation of LBVH from [Karras 2012](https://doi.org/10.2312/EGGH/HPG12/
 ## Usage
 Assumes geometry is already loaded and represented in memory. `util/normalize.cpp` uses the triangulated output from [rapidobj](https://github.com/guybrush77/rapidobj), and discards everything aside from triangle positions and indices.
 
+```
+g++ -Iinclude src/lbvh.cpp src/util/normalize.cpp -o bin/lbvh
+```
+
 ## TODO
-- [ ] Example normalize input for testing and debugging
+- [ ] Normalize input for testing and debugging
 - [ ] Compute Z-order codes
 - [ ] Sort Z-order codes
 - [ ] Construct binary radix tree
