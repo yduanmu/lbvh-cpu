@@ -11,7 +11,14 @@ An implementation of LBVH from [Karras 2012](https://doi.org/10.2312/EGGH/HPG12/
 Assumes geometry is already loaded and represented in memory. `util/normalize.cpp` uses the triangulated output from [rapidobj](https://github.com/guybrush77/rapidobj), and discards everything aside from triangle positions and indices.
 
 ```
-g++ -Iinclude src/lbvh.cpp src/util/normalize.cpp -o bin/lbvh
+cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build
+cmake --build build --target test_normalize
+```
+
+```
+./build/lbvh/lbvh_cpu
+./build/lbvh/test_normalize
 ```
 
 ## TODO
