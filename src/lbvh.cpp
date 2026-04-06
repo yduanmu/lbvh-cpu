@@ -28,7 +28,7 @@ void usage() {
 			"\t		(for sequential BVH construction, see sah.cpp)\n"
 			"\t-c default true flag for parallel Z-order code computation\n"
 			"\t-s default true flag for parallel radix sort\n"
-			"\t 	(if false, uses std::sort)"
+			"\t 	(if false, uses sequential radix sort)"
 			"\t-r default true flag for parallel construction of binary radix tre>\n"
 			"\t-b default true flag for parallel BVH construction\n"
 			"\t-h print this message";
