@@ -38,7 +38,7 @@ Recall that for SIMD (Single Instruction Multiple Data) programming, we want to 
 
 Normalizing centroids to a specific range can avoid large variations in Z-order codes, leading to a more balanced tree overall. Identify min/max bounds of data, calculate scale factor, quantize centroid coordinates to integers coordinates, and interleave bits to produce Z-order code.
 
-$n$-bit Morton code of a $3$D vector $v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}$ is computed by first determining the quantized coordinates $v^{\*} = {v^{\*}_{x}, v^{\*}_{y}, v^{\*}_{z}} \in \langle 0, 2^{n/3} \rangle \cross \langle 0, 2^{n/3} \rangle \cross \langle 0, 2^{n/3} \rangle$. The Z-order code is then evaluated by interleaving bits of the components of $v^{\*}$ ([VBH17](https://doi.org/10.1145/3105762.3105782)). Not going to use the extended codes of this paper, probably, but it gave a good definition of Z-order codes.
+$n$-bit Morton code of a $3$D vector $v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}$ is computed by first determining the quantized coordinates $v' = {v'_{x}, v'_{y}, v'_{z}} \in \langle 0, 2^{n/3} \rangle \cross \langle 0, 2^{n/3} \rangle \cross \langle 0, 2^{n/3} \rangle$. The Z-order code is then evaluated by interleaving bits of the components of $v'$ ([VBH17](https://doi.org/10.1145/3105762.3105782)). Not going to use the extended codes of this paper, probably, but it gave a good definition of Z-order codes.
 
 ## Dependencies
 I use [rapidobj](https://github.com/guybrush77/rapidobj) to load and parse obj files for testing, but you should be able to use any obj parser as long as you write your own utility function to clean the output into something usable.
