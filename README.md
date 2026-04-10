@@ -6,6 +6,7 @@ For sequential and parallel radix sort implementation, see [here](https://github
 ## Table of contents
 - [Usage](#usage)
 - [TODO](#todo)
+- [Per File](#per-file)
 - [Notes](#notes)
 - [Dependencies](#dependencies)
 
@@ -32,9 +33,15 @@ Current week: 1/4.
 - [ ] **Week 3:** parallel LBVH construction with binary radix tree and AABB fitting.
 - [ ] **Week 4:** performance debugging and writeup.
 
+## Per File
+
+### normalize.cpp
+
+Sequentially written but optimized for SIMD.
+
 ## Notes
 
-Testing machine is Intel Xeon Gold 5218. 32 physical cores (2x16), 64 hardware threads. Optimizing for x86_64. Either targeting AVX2 (main result) or AVX-512 (upper bound).
+Testing machine is **Intel Xeon Gold 5218**. 32 physical cores (2x16), 64 hardware threads. Optimizing for `x86_64`. Either targeting AVX2 (main result) or AVX-512 (upper bound).
 
 Since 2-socket NUMA, remember to pin threads per socket and allocate memory per socket.
 
@@ -73,7 +80,7 @@ Recall that for SIMD (Single Instruction Multiple Data) programming, we want to 
 
 Normalizing centroids to a specific range can avoid large variations in Z-order codes, leading to a more balanced tree overall. Identify min/max bounds of data, calculate scale factor, quantize centroid coordinates to integers coordinates, and interleave bits to produce Z-order code.
 
-> $n$-bit Morton code of a $3$-D vector $v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}$ is computed by first determining the quantized coordinates $v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle$. The Z-order code is then evaluated by interleaving bits of the components of $v^{*}$.
+> $n$-bit Morton code of a $3$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$.
 
 ([VBH17](https://doi.org/10.1145/3105762.3105782)). Not going to use the extended codes of this paper, probably, but it gave a good definition of Z-order codes. I couldn't find a legible copy of Morton's 1966 paper. Seriously, it was unreadable.
 
