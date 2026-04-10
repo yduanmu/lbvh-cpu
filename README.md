@@ -34,11 +34,52 @@ Current week: 1/4.
 
 ## Notes
 
-Recall that for SIMD (Single Instruction Multiple Data) programming, we want to use SoA (Structure of Arrays) for cache-efficiency. When you have time, you might want to look into AoSoA and `vector reserve()`.
+Testing machine is Intel Xeon Gold 5218. 32 physical cores (2x16), 64 hardware threads. Optimizing for x86_64. Either targeting AVX2 (main result) or AVX-512 (upper bound).
+
+Since 2-socket NUMA, remember to pin threads per socket and allocate memory per socket.
+
+Z-order sort: if AVX2, can process 8x32-bit keys at once; if AVX-512, 16x32-bit keys. ISA matters most here.
+
+Parallel radix sort with OpenMP; remember to use cache-friendly bucket layout. ISA doesn't matter as much as NUMA awareness and memory layout.
+
+In binary radix tree construction, should focus on reducing branches, precomputing prefix lengths, and cache locality. This step uses longest common prefixes and binary search over ranges. On CPU, this has the cons of being branchy, irregular memory access, and difficulty of vectorization. ISA matters least here.
+
+Benchmark both `clang` and `gcc`.
+
+- Something about compilers preference for pointer casting vs `memcpy`.
+- Clang might be better at vectorizing Z-order code loops and generating clean AVX-512. Include `-fopenmp -lomp`.
+- GCC might be better at aggressive inlining and OpenMP performance. Include `-fopenmp`.
+
+```
+-O3 -march=x86-64
+```
+
+```
+-O3 -march=native -ffast-math
+```
+
+```
+-mavx2
+-mavx512f -mavx512bw -mavx512vl
+```
+
+Recall that for SIMD (Single Instruction Multiple Data) programming, we want to use SoA (Structure of Arrays) for cache-efficiency.
+
+> [!IMPORTANT]
+> When `normalize.cpp` compiles, restructure `PrimitiveData` from SoA to AoSoA.
+
+> [!IMPORTANT]
+> Look into manual AVX (or optimally, Eigen or GLM) for speedups in tight loops.
 
 Normalizing centroids to a specific range can avoid large variations in Z-order codes, leading to a more balanced tree overall. Identify min/max bounds of data, calculate scale factor, quantize centroid coordinates to integers coordinates, and interleave bits to produce Z-order code.
 
-$n$-bit Morton code of a $3$D vector $v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}$ is computed by first determining the quantized coordinates $v' = {v'_{x}, v'_{y}, v'_{z}} \in \langle 0, 2^{n/3} \rangle \cross \langle 0, 2^{n/3} \rangle \cross \langle 0, 2^{n/3} \rangle$. The Z-order code is then evaluated by interleaving bits of the components of $v'$ ([VBH17](https://doi.org/10.1145/3105762.3105782)). Not going to use the extended codes of this paper, probably, but it gave a good definition of Z-order codes.
+> $n$-bit Morton code of a $3$-D vector $v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}$ is computed by first determining the quantized coordinates $v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle$. The Z-order code is then evaluated by interleaving bits of the components of $v^{*}$.
+
+([VBH17](https://doi.org/10.1145/3105762.3105782)). Not going to use the extended codes of this paper, probably, but it gave a good definition of Z-order codes. I couldn't find a legible copy of Morton's 1966 paper. Seriously, it was unreadable.
+
+> Using `size_t` appropriately makes your source code a little more self-documenting. When you see an object declared as a `size_t` , you immediately know it represents a size in bytes or an index, rather than an error code or a general arithmetic value.
+
+([Embedded 2015](https://www.embedded.com/why-size_t-matters/)).
 
 ## Dependencies
 I use [rapidobj](https://github.com/guybrush77/rapidobj) to load and parse obj files for testing, but you should be able to use any obj parser as long as you write your own utility function to clean the output into something usable.
