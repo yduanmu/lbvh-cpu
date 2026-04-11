@@ -6,7 +6,6 @@ For sequential and parallel radix sort implementation, see [here](https://github
 ## Table of contents
 - [Usage](#usage)
 - [TODO](#todo)
-- [Per File](#per-file)
 - [Notes](#notes)
 - [Dependencies](#dependencies)
 
@@ -20,8 +19,8 @@ cmake --build build --target test_normalize
 ```
 
 ```
-./build/lbvh/lbvh_cpu
-./build/lbvh/test_normalize
+./build/bin/lbvh_cpu
+./build/bin/test_normalize -f "cube.obj"
 ```
 
 ## TODO
@@ -33,11 +32,14 @@ Current week: 1/4.
 - [ ] **Week 3:** parallel LBVH construction with binary radix tree and AABB fitting.
 - [ ] **Week 4:** performance debugging and writeup.
 
-## Per File
+### optimize normalize.cpp for SIMD
 
-### normalize.cpp
+The normalize code isn't the point and isn't even timed, but for learning experience, implement the below.
 
-Sequentially written but optimized for SIMD.
+- [ ] Guarantee strict alignment for `vector<float>` for `64 bytes`.
+- [ ] Prepare for SIMD batching by restructuring the nested `shape` and `face` for loop into a single for loop based off `num_tris`. Want to process `4–8` triangles at once to benefit from AVX2/AVX-512, but currently there's too much indexing indirection to do so.
+- [ ] Restructure loop (again) to operate on `8` (AVX2) or `16` (AVX-512) triangles in parallel using vector registers.
+- [ ] Use SIMD instructions such as `_mm256_add_ps` to manually load data (deindex triangles into flat triangle buffer (contiguous memory)), operate on it in vectors, and store it back.
 
 ## Notes
 
