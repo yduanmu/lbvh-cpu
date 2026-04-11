@@ -94,7 +94,7 @@ std::optional <PrimitiveData> load_tri_obj(const std::string& path) {
 	bmax_z.resize(num_tris);
 	vector<uint32_t> prim_id;
 	prim_id.resize(num_tris);
-	vector<float> norm_x, norm_y, norm_z; //want geometric normals so ignoring OBJ normals
+	vector<float> norm_x, norm_y, norm_z; //want face normals so ignoring OBJ normals
 	norm_x.resize(num_tris);
 	norm_y.resize(num_tris);
 	norm_z.resize(num_tris);
