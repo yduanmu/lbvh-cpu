@@ -1,8 +1,12 @@
 #pragma once
 
 #include <vector>
+#include <cstdint>
+#include <optional>
+#include <string>
 
 using std::vector;
+using std::uint32_t;
 
 struct PrimitiveData {
 	vector<float> centroid_x, centroid_y, centroid_z;

@@ -5,8 +5,10 @@
 #include <vector>
 #include <iostream>
 #include <limits>
+#include <optional>
 
 using std::vector;
+using std::uint32_t;
 
 // ====================================================================================
 // Calculate normals via cross product
