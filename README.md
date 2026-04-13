@@ -27,12 +27,16 @@ cmake --build build --target test_normalize
 
 Current week: 1/4.
 
-- [ ] **Week 1:** foundational work + sequential LBVH. Normalize input for testing & debugging, compute Z-order codes, implement sequential radix sort & verify correctness using comparison with `std::sort`, build LBVH sequentially. 
+- [ ] **Week 1:** foundational work + sequential LBVH. Normalize input for testing & debugging, compute Z-order codes, implement sequential radix sort & verify correctness using comparison with `std::sort`. 
 - [ ] **Week 2:** parallel sort; verfiy correctness & efficiency. This will probably take the longest.
 - [ ] **Week 3:** parallel LBVH construction with binary radix tree and AABB fitting.
 - [ ] **Week 4:** performance debugging and writeup.
 
-### optimize normalize.cpp for SIMD
+### Optimization TODO
+
+- [ ] Align the `vector<float>`s within `PrimitiveData` with a custom 32-byte aligned allocator and benchmark using `_mm256_load_ps` instead of `_mm256_loadu_ps` in `comp_zorder.cpp`. "On most modern CPUs there isn't a difference, so unless you know your data is aligned it's better to use unaligned versions" ([Vulkan Guide](https://vkguide.dev/docs/extra-chapter/intro_to_simd/)).
+
+### Optimize normalize.cpp for SIMD
 
 The normalize code isn't the point and isn't even timed, but for learning experience, implement the below.
 
@@ -51,7 +55,7 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer). Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. Duplicate keys are handled similarly to Karras 2012, where [INSERT LATER].
 
-> ![WARNING]
+> [!WARNING]
 > Remember to handle duplicate keys.
 
 Z-order sort: if AVX2, can process 8x32-bit keys at once; if AVX-512, 16x32-bit keys. ISA matters most here.

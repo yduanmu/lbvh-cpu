@@ -105,6 +105,8 @@ int main(int argc, char** argv) {
 							<< prim_data->max_z[i] << ")" << endl;
 	}
 
+	//bool bit_res = false if 10 bit resolution, true if 21.
+
 	//only thread 0 should time things
 	// std::chrono::steady_clock::time_point start;
 	// start = std::chrono::steady_clock::now();

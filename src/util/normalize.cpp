@@ -11,7 +11,7 @@ using std::vector;
 using std::uint32_t;
 
 // ====================================================================================
-// Calculate normals via cross product
+// Calculate planar normals via cross product
 // ====================================================================================
 inline Fl3 calc_normal(float x0, float y0, float z0,
 		               float x1, float y1, float z1,
@@ -96,7 +96,7 @@ std::optional <PrimitiveData> load_tri_obj(const std::string& path) {
 	bmax_z.resize(num_tris);
 	vector<uint32_t> prim_id;
 	prim_id.resize(num_tris);
-	vector<float> norm_x, norm_y, norm_z; //want face normals so ignoring OBJ normals
+	vector<float> norm_x, norm_y, norm_z; //want planar normals so ignoring OBJ normals
 	norm_x.resize(num_tris);
 	norm_y.resize(num_tris);
 	norm_z.resize(num_tris);
@@ -133,7 +133,7 @@ std::optional <PrimitiveData> load_tri_obj(const std::string& path) {
 			float cy = (p0[1] + p1[1] + p2[1]) * (1.0f / 3.0f);
 			float cz = (p0[2] + p1[2] + p2[2]) * (1.0f / 3.0f);
 
-			//normalize centroids
+			//min-max normalize centroids
 			cx = (cx - min_x) * inv_dx;
 			cy = (cy - min_y) * inv_dy;
 			cz = (cz - min_z) * inv_dz;
@@ -150,7 +150,7 @@ std::optional <PrimitiveData> load_tri_obj(const std::string& path) {
 			bmax_y[prim_counter] = std::max({p0[1], p1[1], p2[1]});
 			bmax_z[prim_counter] = std::max({p0[2], p1[2], p2[2]});
 
-			//compute normals
+			//compute plane normals
 			Fl3 n = calc_normal(p0[0], p0[1], p0[2],
 								p1[0], p1[1], p1[2],
 								p2[0], p2[1], p2[2]);
