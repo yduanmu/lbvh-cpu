@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
 	auto cfg = parse_args(argc, argv);
 	std::optional <PrimitiveData> prim_data = load_tri_obj("models/" + cfg.filename);
 	if(!prim_data) {
-		cout << "See above error" << endl << std::flush;
+		cerr << "See above error" << endl << std::flush;
 		return 1;
 	}
 	

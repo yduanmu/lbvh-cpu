@@ -53,7 +53,13 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `normalize.cpp`: centroid coordinates are **min-max normalized** to prepare for later *quantization* and Z-order encoding. Normalization ensures that the minimum value is $`0`$ and maximum is $`1`$, and all other values scaled proportionally in between. This is done using $`x' = \frac{x-min(x)}{max(x) - min(x)}`$ where $`x`$ is the original value and $`x'`$ the normalized value ([Wikipedia](https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization))).
 
-`comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer). Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. Duplicate keys are handled similarly to Karras 2012, where [INSERT LATER].
+`comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer). Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even. Duplicate keys are handled similarly to Karras 2012, where [INSERT LATER].
+
+- Benchmark whether `_mm256_cvttps_epi32` (truncate) would be faster.
+
+> $`n`$-bit Z-order code of a $`3`$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$.
+
+([VBH17](https://doi.org/10.1145/3105762.3105782)). Not going to use the extended codes of this paper, probably, but it gave a good definition of Z-order codes. I couldn't find a legible copy of Morton's 1966 paper. Seriously, it was unreadable.
 
 > [!WARNING]
 > Remember to handle duplicate keys.
@@ -90,16 +96,6 @@ Recall that for SIMD (Single Instruction Multiple Data) programming, we want to 
 
 > [!IMPORTANT]
 > Look into manual AVX (or optimally, Eigen or GLM) for speedups in tight loops.
-
-Normalizing centroids to a specific range can avoid large variations in Z-order codes, leading to a more balanced tree overall. Identify min/max bounds of data, calculate scale factor, quantize centroid coordinates to integers coordinates, and interleave bits to produce Z-order code.
-
-> $`n`$-bit Z-order code of a $`3`$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$.
-
-([VBH17](https://doi.org/10.1145/3105762.3105782)). Not going to use the extended codes of this paper, probably, but it gave a good definition of Z-order codes. I couldn't find a legible copy of Morton's 1966 paper. Seriously, it was unreadable.
-
-> Using `size_t` appropriately makes your source code a little more self-documenting. When you see an object declared as a `size_t` , you immediately know it represents a size in bytes or an index, rather than an error code or a general arithmetic value.
-
-([Embedded 2015](https://www.embedded.com/why-size_t-matters/)).
 
 ## Dependencies
 I use [rapidobj](https://github.com/guybrush77/rapidobj) to load and parse obj files for testing, but you should be able to use any obj parser as long as you write your own utility function to clean the output into something usable.
