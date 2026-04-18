@@ -49,12 +49,13 @@ QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
 		__m256 cy_qf = _mm256_mul_ps(cy, q);
 		__m256 cz_qf = _mm256_mul_ps(cz, q);
 
-		//round to nearest, tie to even. 32-bit ints here
+		//round to nearest, tie to even. 8 32-bit ints
 		__m256 i32_x = _mm256_cvtps_epi32(cx_qf);
 		__m256 i32_y = _mm256_cvtps_epi32(cy_qf);
 		__m256 i32_z = _mm256_cvtps_epi32(cz_qf);
 
 		//pack into 16-bit ints
+		//AVX2 has no 256-bit version of packus, so must split into 2 128-bit halves
 		_mm_storeu_si128(out_x + i, _mm_packus_epi32(_mm256_castsi256_si128(i32_x),
 													 _mm256_extracti128_si256(i32_x, 1)));
 		_mm_storeu_si128(out_y + i, _mm_packus_epi32(_mm256_castsi256_si128(i32_y),
