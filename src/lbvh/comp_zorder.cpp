@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <immintrin.h>
 #include <cmath>
+#include <omp.h>
 
 using std::vector;
 using std::uint32_t;
