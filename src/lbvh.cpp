@@ -2,12 +2,19 @@
 #include <unistd.h>
 #include <string>
 #include <optional>
-// #include <chrono>
+#include <chrono>
+#include <cstdint>
 #include "util/normalize.hpp"
+#include "lbvh/comp_zorder.hpp"
 
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+using std::chrono::steady_clock;
+using std::vector;
+using std::uint32_t;
 
 // ====================================================================================
 // Command-line config
@@ -30,8 +37,8 @@ void usage() {
 			"\t 	(default 16. 1 means sequential)\n"
 			"\t		(for sequential BVH construction, see sah.cpp)\n"
 			"\t-c default true flag for parallel Z-order code computation\n"
-			"\t-s default true flag for parallel radix sort\n"
-			"\t 	(if false, uses sequential radix sort)"
+	"\t-s default true flag for parallel radix sort\n"
+	"\t 	(if false, uses sequential radix sort)"
 			"\t-r default true flag for parallel construction of binary radix tre>\n"
 			"\t-b default true flag for parallel BVH construction\n"
 			"\t-h print this message";
@@ -85,7 +92,7 @@ int main(int argc, char** argv) {
 	auto cfg = parse_args(argc, argv);
 	std::optional <PrimitiveData> prim_data = load_tri_obj("models/" + cfg.filename);
 	if(!prim_data) {
-		cerr << "See above error" << endl << std::flush;
+		cerr << "See above error" << endl;
 		return 1;
 	}
 	
@@ -106,11 +113,16 @@ int main(int argc, char** argv) {
 	}
 
 	//bool bit_res = false if 10 bit resolution, true if 21.
+	auto t0 = steady_clock::now();
+	QCent qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
+						   prim_data->centroid_z);
+	vector<uint32_t> zcodes = inter_zorder(qcent);
+	auto t1 = steady_clock::now();
+	auto elapsed = duration_cast<milliseconds>(t1 - t0);
+	cout << "comp_zorder complete: " << elapsed.count() << endl;
+
 
 	//only thread 0 should time things
-	// std::chrono::steady_clock::time_point start;
-	// start = std::chrono::steady_clock::now();
-	// auto end = std::chrono::steady_clock::now();
 	// std::chrono::duration<double> elapsed = end - start;
 	
 	return 0;
