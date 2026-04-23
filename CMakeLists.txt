@@ -10,22 +10,17 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_compile_options(-Wall -Wextra -Wpedantic -Werror -O3)
 
-# add_executable(lbvh_cpu
-# 	src/lbvh.cpp
-# 	src/lbvh/comp_zorder.cpp
-# 	src/lbvh/cons_bvh.cpp
-# 	src/lbvh/cons_radix.cpp
-# 	src/lbvh/sort_zorder.cpp
-# 	src/util/normalize.cpp
-# )
-# target_include_directories(lbvh_cpu PRIVATE ${CMAKE_SOURCE_DIR}/include)
+find_package(OpenMP REQUIRED)
 
 # Executables for testing only
-add_executable(test_normalize
+add_executable(test
 	src/lbvh.cpp
 	src/util/normalize.cpp
+	src/lbvh/comp_zorder.cpp
 )
-target_include_directories(test_normalize PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+target_link_libraries(test PRIVATE OpenMP::OpenMP_CXX)
 
 # For use with rapidobj only
 include(FetchContent)
@@ -34,4 +29,4 @@ FetchContent_Declare(rapidobj
     GIT_TAG         origin/master
 )
 FetchContent_MakeAvailable(rapidobj)
-target_link_libraries(test_normalize PRIVATE rapidobj)
+target_link_libraries(test PRIVATE rapidobj)

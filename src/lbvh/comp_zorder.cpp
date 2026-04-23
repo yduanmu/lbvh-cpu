@@ -17,7 +17,7 @@ using std::uint16_t;
 // Quantize normalized centroids
 // ====================================================================================
 QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
-			   vector<float>& centroid_z) {
+			   vector<float>& centroid_z, int num_thr) {
 	vector<uint16_t> qcent_x, qcent_y, qcent_z;
 	size_t n = centroid_x.size();
 	qcent_x.resize(n);
@@ -39,6 +39,7 @@ QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
 	__m128i* out_y = reinterpret_cast<__m128i*>(qcent_y.data());
 	__m128i* out_z = reinterpret_cast<__m128i*>(qcent_z.data());
 
+	omp_set_num_threads(num_thr);
 	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < limit; i += 8) {
 		__m256 cx = _mm256_loadu_ps(centroid_x.data() + i);
@@ -93,12 +94,13 @@ inline __m256i expand_bits(__m256i v) {
     return v;
 }
 
-vector<uint32_t> inter_zorder(QCent qcent) {
+vector<uint32_t> inter_zorder(QCent qcent, int num_thr) {
 	vector<uint32_t> zcodes;
 	size_t n = qcent.x.size();
 	zcodes.resize(n);
 
 	size_t limit = n - (n % 8);
+	omp_set_num_threads(num_thr);
 	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < limit; i += 8) {
 		__m256i x = _mm256_loadu_epi16(qcent.x.data() + i);

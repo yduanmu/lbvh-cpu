@@ -13,9 +13,9 @@ struct QCent {
 };
 
 QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
-			   vector<float>& centroid_z);
+			   vector<float>& centroid_z, int num_thr);
 
 inline __m256i expand_bits(__m256i v);
 
-vector<uint32_t> inter_zorder(QCent qcent);
+vector<uint32_t> inter_zorder(QCent qcent, int num_thr);
 

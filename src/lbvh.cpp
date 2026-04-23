@@ -114,9 +114,11 @@ int main(int argc, char** argv) {
 
 	//bool bit_res = false if 10 bit resolution, true if 21.
 	auto t0 = steady_clock::now();
-	QCent qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
-						   prim_data->centroid_z);
-	vector<uint32_t> zcodes = inter_zorder(qcent);
+	if(cfg.num_threads > 1) {
+		QCent qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
+							   prim_data->centroid_z, cfg.num_threads);
+		vector<uint32_t> zcodes = inter_zorder(qcent, cfg.num_threads);
+	}
 	auto t1 = steady_clock::now();
 	auto elapsed = duration_cast<milliseconds>(t1 - t0);
 	cout << "comp_zorder complete: " << elapsed.count() << endl;
