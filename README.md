@@ -55,16 +55,13 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `normalize.cpp`: centroid coordinates are **min-max normalized** to prepare for later *quantization* and Z-order encoding. Normalization ensures that the minimum value is $`0`$ and maximum is $`1`$, and all other values scaled proportionally in between. This is done using $`x' = \frac{x-min(x)}{max(x) - min(x)}`$ where $`x`$ is the original value and $`x'`$ the normalized value ([Wikipedia](https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization))).
 
-`comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer). Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even. Duplicate keys are handled similarly to Karras 2012, where [INSERT LATER].
+`comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer). Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even.
 
-`sort_zorder.cpp`: if AVX2, can process 8x32-bit keys at once; if AVX-512, 16x32-bit keys. ISA matters most here.
+`sort_zorder.cpp`: with AVX2, can process 8x32-bit keys at once.
 
 > $`n`$-bit Z-order code of a $`3`$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$.
 
 ([VBH17](https://doi.org/10.1145/3105762.3105782)). Not going to use the extended codes of this paper, probably, but it gave a good definition of Z-order codes. I couldn't find a legible copy of Morton's 1966 paper. Seriously, it was unreadable.
-
-> [!WARNING]
-> Remember to handle duplicate keys.
 
 Parallel radix sort with OpenMP. Should use cache-friendly bucket layout. ISA doesn't matter as much as NUMA awareness and memory layout.
 

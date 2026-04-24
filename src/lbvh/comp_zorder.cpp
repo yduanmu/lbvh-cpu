@@ -35,9 +35,6 @@ QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
 	//vectorized quantize loop
 	size_t limit = n - (n % 8);
 	__m256 q = _mm256_set1_ps(mult);
-	__m128i* out_x = reinterpret_cast<__m128i*>(qcent_x.data());
-	__m128i* out_y = reinterpret_cast<__m128i*>(qcent_y.data());
-	__m128i* out_z = reinterpret_cast<__m128i*>(qcent_z.data());
 
 	omp_set_num_threads(num_thr);
 	#pragma omp parallel for schedule(static)
@@ -58,12 +55,15 @@ QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
 
 		//pack into 16-bit ints
 		//AVX2 has no 256-bit version of packus, so must split into 2 128-bit halves
-		_mm_storeu_si128(out_x + i, _mm_packus_epi32(_mm256_castsi256_si128(i32_x),
-													 _mm256_extracti128_si256(i32_x, 1)));
-		_mm_storeu_si128(out_y + i, _mm_packus_epi32(_mm256_castsi256_si128(i32_y),
-													 _mm256_extracti128_si256(i32_y, 1)));
-		_mm_storeu_si128(out_z + i, _mm_packus_epi32(_mm256_castsi256_si128(i32_z),
-													 _mm256_extracti128_si256(i32_z, 1)));
+		_mm_storeu_si128(reinterpret_cast<__m128i*>(qcent_x.data()) + i,
+						 _mm_packus_epi32(_mm256_castsi256_si128(i32_x),
+										  _mm256_extracti128_si256(i32_x, 1)));
+		_mm_storeu_si128(reinterpret_cast<__m128i*>(qcent_y.data() + i),
+						 _mm_packus_epi32(_mm256_castsi256_si128(i32_y),
+										  _mm256_extracti128_si256(i32_y, 1)));
+		_mm_storeu_si128(reinterpret_cast<__m128i*>(qcent_z.data() + i),
+						 _mm_packus_epi32(_mm256_castsi256_si128(i32_z),
+										  _mm256_extracti128_si256(i32_z, 1)));
 	}
 
 	//sequentially quantize the remainder
@@ -94,7 +94,7 @@ inline __m256i expand_bits(__m256i v) {
     return v;
 }
 
-vector<uint32_t> inter_zorder(QCent qcent, int num_thr) {
+vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
 	vector<uint32_t> zcodes;
 	size_t n = qcent.x.size();
 	zcodes.resize(n);
