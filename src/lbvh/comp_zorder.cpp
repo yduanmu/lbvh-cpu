@@ -9,12 +9,8 @@ using std::vector;
 using std::uint32_t;
 using std::uint16_t;
 
-// #ifdef __AVX512F__
-
-// #else	//AVX2
-
 // ====================================================================================
-// Quantize normalized centroids
+// Discretize & Quantize.
 // ====================================================================================
 QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
 			   vector<float>& centroid_z, int num_thr) {
@@ -24,13 +20,7 @@ QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
 	qcent_y.resize(n);
 	qcent_z.resize(n);
 	
-	float mult;
-	mult = (1 << 10) - 1;
-	// if(bit_res) {
-	// 	mult = (1 << 21) - 1;
-	// } else {
-	// 	mult = (1 << 10) - 1;
-	// }
+	float mult = (1 << 10) - 1; //multiply by 1023 to quantize to 10-bit resolution
 
 	//vectorized quantize loop
 	size_t limit = n - (n % 8);
@@ -103,9 +93,19 @@ vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
 	omp_set_num_threads(num_thr);
 	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < limit; i += 8) {
-		__m256i x = _mm256_loadu_epi16(qcent.x.data() + i);
-		__m256i y = _mm256_loadu_epi16(qcent.y.data() + i);
-		__m256i z = _mm256_loadu_epi16(qcent.z.data() + i);
+		/* Our centroids are now in 16-bit ints with each a 10-bit value, but
+		 * expand_bits() expects 32-bit ints instead, so we must widen them. AVX2 widens
+		 * 8 16->32-bit ints at a time, and expand_bits() processes 3x8 32-bit at a time.
+		 */
+
+		__m128i buf16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(qcent.x.data() + i));
+		__m256i x = _mm256_cvtepu16_epi32(buf16);
+
+		buf16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(qcent.y.data() + i));
+		__m256i y = _mm256_cvtepu16_epi32(buf16);
+
+		buf16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(qcent.z.data() + i));
+		__m256i z = _mm256_loadu_epi32(qcent.z.data() + i);
 
 		//expand out
 		x = expand_bits(x);
@@ -147,6 +147,4 @@ vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
 	}
 	return zcodes;
 }
-
-// #endif
 
