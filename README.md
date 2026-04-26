@@ -21,6 +21,9 @@ cmake --build build --target test
 ./build/bin/test -f "cube.obj"
 ```
 
+> [!IMPORTANT]
+> `num_threads()` only guarantees maximum number of threads, so will want to count actual number when benchmarking.
+
 ## TODO
 
 - [x] normalize input for testing & debugging, compute Z-order codes.

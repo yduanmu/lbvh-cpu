@@ -12,8 +12,8 @@ using std::uint16_t;
 // ====================================================================================
 // Discretize & Quantize.
 // ====================================================================================
-QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
-			   vector<float>& centroid_z, int num_thr) {
+QCent quantize(const vector<float>& centroid_x, const vector<float>& centroid_y,
+			   const vector<float>& centroid_z, int num_thr) {
 	vector<uint16_t> qcent_x, qcent_y, qcent_z;
 	size_t n = centroid_x.size();
 	qcent_x.resize(n);
@@ -39,9 +39,9 @@ QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
 		__m256 cz_qf = _mm256_mul_ps(cz, q);
 
 		//round to nearest, tie to even. 8 32-bit ints
-		__m256 i32_x = _mm256_cvtps_epi32(cx_qf);
-		__m256 i32_y = _mm256_cvtps_epi32(cy_qf);
-		__m256 i32_z = _mm256_cvtps_epi32(cz_qf);
+		__m256i i32_x = _mm256_cvtps_epi32(cx_qf);
+		__m256i i32_y = _mm256_cvtps_epi32(cy_qf);
+		__m256i i32_z = _mm256_cvtps_epi32(cz_qf);
 
 		//pack into 16-bit ints
 		//AVX2 has no 256-bit version of packus, so must split into 2 128-bit halves
@@ -94,9 +94,9 @@ vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
 	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < limit; i += 8) {
 		/* Our centroids are now in 16-bit ints with each a 10-bit value, but
-		 * expand_bits() expects 32-bit ints instead, so we must widen them. AVX2 widens
-		 * 8 16->32-bit ints at a time, and expand_bits() processes 3x8 32-bit at a time.
-		 */
+		 * expand_bits() expects 32-bit ints instead, so we must widen them. AVX2
+		 * widens 8 16->32-bit ints at a time, and expand_bits() processes 3x8 32-bit
+		 * at a time. */
 
 		__m128i buf16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(qcent.x.data() + i));
 		__m256i x = _mm256_cvtepu16_epi32(buf16);
@@ -113,6 +113,7 @@ vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
         z = expand_bits(z);
 
 		//interleave together
+		//@TODO check if it's slli (higher address )or srli (lower address)
 		y = _mm256_slli_epi32(y, 1);
 		z = _mm256_slli_epi32(z, 2);
 		_mm256_storeu_si256(reinterpret_cast<__m256i*>(zcodes.data() + i),

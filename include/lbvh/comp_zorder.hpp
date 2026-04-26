@@ -24,8 +24,8 @@ struct QCent {
  * 			with each dimension in its own vector. Each 32-bit int contains a
  * 			10-bit value.
  */
-QCent quantize(vector<float>& centroid_x, vector<float>& centroid_y,
-			   vector<float>& centroid_z, int num_thr);
+QCent quantize(const vector<float>& centroid_x, const vector<float>& centroid_y,
+			   const vector<float>& centroid_z, int num_thr);
 
 /**
  * @brief	Utility function to prepare values for being interleaved 3 ways. Expands a
