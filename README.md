@@ -34,7 +34,6 @@ cmake --build build --target test
 ### Optimization TODO
 
 - [ ] Align the `vector<float>`s within `PrimitiveData` with a custom 32-byte aligned allocator and benchmark using `_mm256_load_ps` instead of `_mm256_loadu_ps` in `comp_zorder.cpp`. "On most modern CPUs there isn't a difference, so unless you know your data is aligned it's better to use unaligned versions" ([Vulkan Guide](https://vkguide.dev/docs/extra-chapter/intro_to_simd/)).
-- [ ] In `comp_zorder.cpp`, benchmark whether `_mm256_cvttps_epi32` (truncate) would have any difference than `_mm256_cvtps_epi32` (rounding).
 
 > [!NOTE]
 > `normalize.cpp` is completely sequential and unoptimized since it won't be benchmarked. I will go back for it if I have time.

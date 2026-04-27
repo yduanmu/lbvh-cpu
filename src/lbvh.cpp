@@ -1,15 +1,18 @@
 #include <iostream>
 #include <unistd.h>
 #include <string>
-#include <bitset>
 #include <optional>
 #include <chrono>
 #include <cstdint>
-#include <random>
-#include <fstream>
-#include <string>
 #include "util/normalize.hpp"
 #include "lbvh/comp_zorder.hpp"
+
+//used in testing comp_zorder
+#include <bitset>
+#include <limits>
+#include <string>
+#include <random>
+#include <fstream>
 
 using std::cout;
 using std::cerr;
@@ -112,8 +115,8 @@ vector<float> generate_centroids(size_t n, unsigned int seed, std::string fn) {
 	return val;
 }
 
-void test_comp_zorder(const vector<float>& cent_x, const vector<float>& cent_y,
-			   		  const vector<float>& cent_z, int num_thr) {
+void test_comp_zorder(vector<float>& cent_x, vector<float>& cent_y,
+			   		  vector<float>& cent_z, int num_thr) {
 	size_t n = cent_x.size();
 
 	QCent qcent;
@@ -123,6 +126,32 @@ void test_comp_zorder(const vector<float>& cent_x, const vector<float>& cent_y,
 
 	vector<uint32_t> zcodes;
 	zcodes.resize(n);
+
+	//min-max normalize first since it's done in normalize.cpp
+	constexpr float INF = std::numeric_limits<float>::infinity();
+	constexpr float NINF = -std::numeric_limits<float>::infinity();
+	float min_x = INF;
+	float min_y = INF;
+	float min_z = INF;
+	float max_x = NINF;
+	float max_y = NINF;
+	float max_z = NINF;
+	for(size_t i = 0; i < n; ++i) {
+		min_x = std::min(min_x, cent_x[i]);
+		min_y = std::min(min_y, cent_y[i]);
+		min_z = std::min(min_z, cent_z[i]);
+		max_x = std::max(max_x, cent_x[i]);
+		max_y = std::max(max_y, cent_y[i]);
+		max_z = std::max(max_z, cent_z[i]);
+	}
+	float inv_dx = (max_x > min_x) ? 1.0f / (max_x - min_x) : 0.0f;	//guard against div by 0
+	float inv_dy = (max_y > min_y) ? 1.0f / (max_y - min_y) : 0.0f;
+	float inv_dz = (max_z > min_z) ? 1.0f / (max_z - min_z) : 0.0f;
+	for(size_t i = 0; i < n; ++i) {
+		cent_x[i] = (cent_x[i] - min_x) * inv_dx;
+		cent_y[i] = (cent_y[i] - min_y) * inv_dy;
+		cent_z[i] = (cent_z[i] - min_z) * inv_dz;
+	}
 
 	//quantize
 	auto t0 = steady_clock::now();

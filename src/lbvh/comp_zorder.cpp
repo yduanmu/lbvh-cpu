@@ -105,7 +105,7 @@ vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
 		__m256i y = _mm256_cvtepu16_epi32(buf16);
 
 		buf16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(qcent.z.data() + i));
-		__m256i z = _mm256_loadu_epi32(qcent.z.data() + i);
+		__m256i z = _mm256_cvtepu16_epi32(buf16);
 
 		//expand out
 		x = expand_bits(x);
@@ -113,7 +113,6 @@ vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
         z = expand_bits(z);
 
 		//interleave together
-		//@TODO check if it's slli (higher address )or srli (lower address)
 		y = _mm256_slli_epi32(y, 1);
 		z = _mm256_slli_epi32(z, 2);
 		_mm256_storeu_si256(reinterpret_cast<__m256i*>(zcodes.data() + i),
