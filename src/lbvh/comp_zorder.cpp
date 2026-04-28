@@ -97,13 +97,10 @@ vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
 		 * expand_bits() expects 32-bit ints instead, so we must widen them. AVX2
 		 * widens 8 16->32-bit ints at a time, and expand_bits() processes 3x8 32-bit
 		 * at a time. */
-
 		__m128i buf16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(qcent.x.data() + i));
 		__m256i x = _mm256_cvtepu16_epi32(buf16);
-
 		buf16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(qcent.y.data() + i));
 		__m256i y = _mm256_cvtepu16_epi32(buf16);
-
 		buf16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(qcent.z.data() + i));
 		__m256i z = _mm256_cvtepu16_epi32(buf16);
 

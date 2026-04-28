@@ -4,15 +4,15 @@
 #include <optional>
 #include <chrono>
 #include <cstdint>
+
+//for output
+#include <bitset>
+#include <fstream>
+
 #include "util/normalize.hpp"
 #include "lbvh/comp_zorder.hpp"
-
-//used in testing comp_zorder
-#include <bitset>
-#include <limits>
-#include <string>
-#include <random>
-#include <fstream>
+#include "lbvh/sort_zorder.hpp"
+#include "lbvh/sort_zorder_seq.hpp"
 
 using std::cout;
 using std::cerr;
@@ -63,7 +63,7 @@ Config parse_args(int argc, char** argv) {
 					cfg.filename = optarg;
 					break;
 				case 't':
-					cfg.num_threads = std::stoi(optarg);
+					cfg.num_threads = static_cast<size_t>(std::stoi(optarg));
 					break;
 				case 'c':
 					cfg.comp_zorder = false;
@@ -91,171 +91,57 @@ break;
 }
 
 // ====================================================================================
-// Cheap and easy testcases.
-// ====================================================================================
-// ------------------------------------------------------------------------------------
-// Test comp_zorder.cpp
-// ------------------------------------------------------------------------------------
-vector<float> generate_centroids(size_t n, unsigned int seed, std::string fn) {
-	vector<float> val;
-	val.resize(n);
-	std::mt19937 prng(seed);
-	std::uniform_real_distribution<float> dist(0.0, 3.0);
-
-	//generate random and then write
-	std::ofstream centroids("tests/comp_zorder/" + fn + ".txt");
-	if(centroids.is_open()) {
-		for(size_t i = 0; i < n; ++i) {
-			val[i] = dist(prng);
-			centroids << val[i] << "\n";
-		}
-	} else {
-		cerr << "Unable to open " + fn + ".txt";
-	}
-	return val;
-}
-
-void test_comp_zorder(vector<float>& cent_x, vector<float>& cent_y,
-			   		  vector<float>& cent_z, int num_thr) {
-	size_t n = cent_x.size();
-
-	QCent qcent;
-	qcent.x.resize(n);
-	qcent.y.resize(n);
-	qcent.z.resize(n);
-
-	vector<uint32_t> zcodes;
-	zcodes.resize(n);
-
-	//min-max normalize first since it's done in normalize.cpp
-	constexpr float INF = std::numeric_limits<float>::infinity();
-	constexpr float NINF = -std::numeric_limits<float>::infinity();
-	float min_x = INF;
-	float min_y = INF;
-	float min_z = INF;
-	float max_x = NINF;
-	float max_y = NINF;
-	float max_z = NINF;
-	for(size_t i = 0; i < n; ++i) {
-		min_x = std::min(min_x, cent_x[i]);
-		min_y = std::min(min_y, cent_y[i]);
-		min_z = std::min(min_z, cent_z[i]);
-		max_x = std::max(max_x, cent_x[i]);
-		max_y = std::max(max_y, cent_y[i]);
-		max_z = std::max(max_z, cent_z[i]);
-	}
-	float inv_dx = (max_x > min_x) ? 1.0f / (max_x - min_x) : 0.0f;	//guard against div by 0
-	float inv_dy = (max_y > min_y) ? 1.0f / (max_y - min_y) : 0.0f;
-	float inv_dz = (max_z > min_z) ? 1.0f / (max_z - min_z) : 0.0f;
-	for(size_t i = 0; i < n; ++i) {
-		cent_x[i] = (cent_x[i] - min_x) * inv_dx;
-		cent_y[i] = (cent_y[i] - min_y) * inv_dy;
-		cent_z[i] = (cent_z[i] - min_z) * inv_dz;
-	}
-
-	//quantize
-	auto t0 = steady_clock::now();
-	qcent = quantize(cent_x, cent_y, cent_z, num_thr);
-	auto t1 = steady_clock::now();
-	auto elapsed = duration_cast<milliseconds>(t1 - t0);
-	cout << "finished quantize(): " << elapsed.count() << endl;
-
-	//write quantized values
-	std::ofstream quantized("tests/comp_zorder/quantized.txt");
-	if(quantized.is_open()) {
-		for(size_t i = 0; i < n; ++i) {
-			quantized << qcent.x[i] << "	"
-					  << qcent.y[i] << "	"
-					  << qcent.z[i] << "\n";
-		}
-	} else {
-		cerr << "Unable to open quantized.txt";
-	}
-
-	//write quantized values in binary
-	std::ofstream qbinary("tests/comp_zorder/qbinary.txt");
-	if(qbinary.is_open()) {
-		for(size_t i = 0; i < n; ++i) {
-			qbinary << std::bitset<16>(qcent.x[i]) << "		"
-					<< std::bitset<16>(qcent.y[i]) << "		"
-					<< std::bitset<16>(qcent.z[i]) << "\n";
-		}
-	}
-
-	//morton codes
-	t0 = steady_clock::now();
-	zcodes = inter_zorder(qcent, num_thr);
-	t1 = steady_clock::now();
-	elapsed = duration_cast<milliseconds>(t1 - t0);
-	cout << "morton complete: " << elapsed.count() << endl;
-
-	//write morton codes in binary
-	std::ofstream morton("tests/comp_zorder/morton.txt");
-	if(morton.is_open()) {
-		for(size_t i = 0; i < n; ++i) {
-			morton << std::bitset<32>(zcodes[i]) << "\n";
-		}
-	} else {
-		cerr << "Unable to open morton.txt";
-	}
-}
-
-// ====================================================================================
 // Main.
 // ====================================================================================
 int main(int argc, char** argv) {
 	auto cfg = parse_args(argc, argv);
-	// --------------------------------------------------------------------------------
-	// For testcases.
-	// --------------------------------------------------------------------------------
-	size_t n = 15;	//number of centroids
-
-	vector<float> cent_x, cent_y, cent_z;
-	cent_x.resize(n);
-	cent_y.resize(n);
-	cent_z.resize(n);
-	cent_x = generate_centroids(n, 0, "cent_x");
-	cent_y = generate_centroids(n, 1, "cent_y");
-	cent_z = generate_centroids(n, 2, "cent_z");
-
-	test_comp_zorder(cent_x, cent_y, cent_z, cfg.num_threads);
+	// parsing using normalize.cpp > rapidobj
+	std::optional <PrimitiveData> prim_data = load_tri_obj("models/" + cfg.filename);
+	if(!prim_data) {
+		cerr << "See above error" << endl;
+		return 1;
+	}
 
 	// --------------------------------------------------------------------------------
-	// For full LBVH.
+	// comp_zorder
 	// --------------------------------------------------------------------------------
-	//parsing using normalize.cpp > rapidobj
-	// std::optional <PrimitiveData> prim_data = load_tri_obj("models/" + cfg.filename);
-	// if(!prim_data) {
-	// 	cerr << "See above error" << endl;
-	// 	return 1;
-	// }
-	//
-	// for(size_t i = 0; i < prim_data->prim_id.size(); ++i) {
-	// 	cout << "ID " << prim_data->prim_id[i] << ":\n"
-	// 		 << "\t centroid: ( " << prim_data->centroid_x[i] << ", "
-	// 		 				      << prim_data->centroid_y[i] << ", "
-	// 							  << prim_data->centroid_z[i] << ")\n"
-	// 		 << "\t normal: (" << prim_data->norm_x[i] << ", "
-	// 		 				   << prim_data->norm_y[i] << ", "
-	// 						   << prim_data->norm_z[i] << ")\n"
-	// 		 << "\t min: (" << prim_data->min_x[i] << ", "
-	// 		 				<< prim_data->min_y[i] << ", "
-	// 						<< prim_data->min_z[i] << ")\n"
-	// 		 << "\t max: (" << prim_data->max_x[i] << ", "
-	// 		 				<< prim_data->max_y[i] << ", "
-	// 						<< prim_data->max_z[i] << ")" << endl;
-	// }
-	//
-	// //bool bit_res = false if 10 bit resolution, true if 21.
-	// auto t0 = steady_clock::now();
-	// if(cfg.num_threads > 1) {
-	// 	QCent qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
-	// 						   prim_data->centroid_z, cfg.num_threads);
-	// 	vector<uint32_t> zcodes = inter_zorder(qcent, cfg.num_threads);
-	// }
-	// auto t1 = steady_clock::now();
-	// auto elapsed = duration_cast<milliseconds>(t1 - t0);
-	// cout << "comp_zorder complete: " << elapsed.count() << endl;
+	auto t0 = steady_clock::now();
+	//@TODO: comp_zorder needs a sequential ver.
+	QCent qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
+						   prim_data->centroid_z, cfg.num_threads);
+	vector<uint32_t> zcodes = inter_zorder(qcent, cfg.num_threads);
+	auto t1 = steady_clock::now();
+	auto elapsed = duration_cast<milliseconds>(t1 - t0);
+	cout << "comp_zorder PAR complete: " << elapsed.count() << endl;
+
+	// --------------------------------------------------------------------------------
+	// sort_zorder
+	// --------------------------------------------------------------------------------
+	t0 = steady_clock::now();
+	if(cfg.sort_zorder || cfg.num_threads <= 1) {
+		radix_sort_seq(zcodes);
+	} else {
+		radix_sort(zcodes, cfg.num_threads);
+	}
+	t1 = steady_clock::now();
+	elapsed = duration_cast<milliseconds>(t1 - t0);
+
+	if(cfg.sort_zorder || cfg.num_threads <= 1) {
+		cout << "sort_zorder_SEQ complete: " << elapsed.count() << endl;
+	} else {
+		cout << "sort_zorder PAR complete: " << elapsed.count() << endl;
+	}
+
+	//output
+	std::ofstream sorted_keys("tests/sorted_keys.txt");
+	if(sorted_keys.is_open()) {
+		for(uint32_t k : zcodes) {
+			sorted_keys << std::bitset<32>(k) << "\n";
+		}
+		sorted_keys.close();
+	} else {
+		cerr << "Unable to open tests/sorted_keys.txt" << std::flush;
+	}
 
 	return 0;
 }
