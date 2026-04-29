@@ -45,7 +45,7 @@ QCent quantize(const vector<float>& centroid_x, const vector<float>& centroid_y,
 
 		//pack into 16-bit ints
 		//AVX2 has no 256-bit version of packus, so must split into 2 128-bit halves
-		_mm_storeu_si128(reinterpret_cast<__m128i*>(qcent_x.data()) + i,
+		_mm_storeu_si128(reinterpret_cast<__m128i*>(qcent_x.data() + i),
 						 _mm_packus_epi32(_mm256_castsi256_si128(i32_x),
 										  _mm256_extracti128_si256(i32_x, 1)));
 		_mm_storeu_si128(reinterpret_cast<__m128i*>(qcent_y.data() + i),

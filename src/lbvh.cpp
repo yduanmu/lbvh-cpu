@@ -101,12 +101,14 @@ int main(int argc, char** argv) {
 		cerr << "See above error" << endl;
 		return 1;
 	}
+	cout << "normalize complete" << endl;
 
 	// --------------------------------------------------------------------------------
 	// comp_zorder
 	// --------------------------------------------------------------------------------
 	auto t0 = steady_clock::now();
 	//@TODO: comp_zorder needs a sequential ver.
+	//@TODO: move timer to the code itself to avoid function call/return overhead.
 	QCent qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
 						   prim_data->centroid_z, cfg.num_threads);
 	vector<uint32_t> zcodes = inter_zorder(qcent, cfg.num_threads);
@@ -117,19 +119,10 @@ int main(int argc, char** argv) {
 	// --------------------------------------------------------------------------------
 	// sort_zorder
 	// --------------------------------------------------------------------------------
-	t0 = steady_clock::now();
-	if(cfg.sort_zorder || cfg.num_threads <= 1) {
+	if(!cfg.sort_zorder || cfg.num_threads <= 1) {
 		radix_sort_seq(zcodes);
 	} else {
 		radix_sort(zcodes, cfg.num_threads);
-	}
-	t1 = steady_clock::now();
-	elapsed = duration_cast<milliseconds>(t1 - t0);
-
-	if(cfg.sort_zorder || cfg.num_threads <= 1) {
-		cout << "sort_zorder_SEQ complete: " << elapsed.count() << endl;
-	} else {
-		cout << "sort_zorder PAR complete: " << elapsed.count() << endl;
 	}
 
 	//output

@@ -2,9 +2,15 @@
 #include <cstdint>
 #include <omp.h>
 #include <vector>
+#include <chrono>
+#include <cstdint>
+#include <iostream>
 
 using std::vector;
 using std::uint32_t;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+using std::chrono::steady_clock;
 
 // ====================================================================================
 // Radix sort parallelized from eloj's radix_sort_u32.c implementation.
@@ -33,6 +39,7 @@ void prefix_sums(vector<Count>& offset, vector<Count>& count, size_t num_thr){
 }
 
 void radix_sort(vector<uint32_t>& zcodes, size_t num_thr) {
+	auto t0 = steady_clock::now();
 	size_t n = zcodes.size();
 	vector<uint32_t> zcodes_aux;
 	zcodes_aux.resize(n);
@@ -152,5 +159,9 @@ void radix_sort(vector<uint32_t>& zcodes, size_t num_thr) {
 		}
 
 	}
+
+	auto t1 = steady_clock::now();
+	auto elapsed = duration_cast<milliseconds>(t1 - t0);
+	std::cout << "sort_zorder PAR complete: " << elapsed.count() << std::endl;
 }
 

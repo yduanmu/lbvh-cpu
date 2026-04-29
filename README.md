@@ -8,7 +8,7 @@ An implementation of LBVH from [Karras 2012](https://doi.org/10.2312/EGGH/HPG12/
 - [Dependencies](#dependencies)
 
 ## Usage
-Assumes geometry is already loaded and represented in memory. `util/normalize.cpp` uses the triangulated output from [rapidobj](https://github.com/guybrush77/rapidobj), and discards everything aside from triangle positions and indices. `util/normalize.cpp` returns a struct `PrimitiveData` of arrays (centroids, primitive ids, and min/max for bounding box computation).
+Assumes geometry is already loaded and represented in memory. `util/normalize.cpp` uses the triangulated output from [rapidobj](https://github.com/guybrush77/rapidobj), and discards everything aside from triangle positions and indices. Files parsed using this cannot have references to `mtl`. `util/normalize.cpp` returns a struct `PrimitiveData` of arrays (centroids, primitive ids, and min/max for bounding box computation).
 
 ```
 cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -18,7 +18,8 @@ cmake --build build --target test
 
 ```
 ./build/bin/lbvh_cpu
-./build/bin/test -f "utah_teapot.obj" -t 10
+./build/bin/test -f "utah_teapot_6k.obj" -t 10
+./build/bin/test -f "powerplant_13m/powerplant.obj" -t 10
 ```
 
 > [!IMPORTANT]

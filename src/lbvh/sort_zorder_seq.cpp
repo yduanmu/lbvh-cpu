@@ -25,15 +25,22 @@
 #include <cstdint>
 #include <vector>
 #include <array>
+#include <iostream>
+#include <chrono>
 
 using std::vector;
 using std::uint32_t;
 using std::array;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+using std::chrono::steady_clock;
 
 // ====================================================================================
 // Sequential radix sort from eloj's radix_sort_u32.c, which I converted to C++.
 // ====================================================================================
 void radix_sort_seq(vector<uint32_t>& zcodes) {
+	auto t0 = steady_clock::now();
+
 	size_t n = zcodes.size();
 	vector<uint32_t> zcodes_aux;
 	zcodes_aux.resize(n);
@@ -103,5 +110,9 @@ void radix_sort_seq(vector<uint32_t>& zcodes) {
 		size_t dest = count3[(key >> 24) & 0xFF]++;
 		zcodes[dest] = zcodes_aux[i];
 	}
+
+	auto t1 = steady_clock::now();
+	auto elapsed = duration_cast<milliseconds>(t1 - t0);
+	std::cout << "sort_zorder_SEQ complete: " << elapsed.count() << std::endl;
 } 
 
