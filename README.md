@@ -1,5 +1,5 @@
 # lbvh-cpu
-An implementation of LBVH from [Karras 2012](https://doi.org/10.2312/EGGH/HPG12/033-037). Parallel on the CPU.
+An implementation of LBVH from [Karras 2012a](https://doi.org/10.2312/EGGH/HPG12/033-037). Parallel on the CPU.
 
 ## Table of contents
 - [Usage](#usage)
@@ -22,15 +22,30 @@ cmake --build build --target test
 ./build/bin/test -f "powerplant_13m/powerplant.obj" -t 10
 ```
 
-> [!IMPORTANT]
-> `num_threads()` only guarantees maximum number of threads, so will want to count actual number when benchmarking.
+```
+Usage. All flags default TRUE (parallel). Toggle for FALSE (sequential):
+-f <file name>
+-t <number of threads>
+    (default 16. 1 means sequential)
+-c Z-order (Morton) code computation
+-s radix sort
+-r binary radix tree construction
+-b BVH construction
+-l toggle logging to FALSE (improves execution time)
+-h print this message
+```
+
+```
+perf stat -e L1-dache-loads,L1-dcache-load-misses,L1-icache-load_misses ./build/bin/test -f "utah_teapot_33k.obj" -t 30
+```
 
 ## TODO
 
 - [x] normalize input for testing & debugging, compute Z-order codes.
 - [x] parallel sort; verify correctness & efficiency.
-- [ ] parallel LBVH construction with binary radix tree and AABB fitting.
-- [ ] performance debugging and writeup.
+- [ ] parallel LBVH construction with binary radix tree.
+- [ ] AABB fitting & BVH construction.
+- [ ] performance debugging and writeup. Keep in mind [benchmarking pitfalls](https://stackoverflow.com/a/60293070/32655769).
 
 ### Optimization TODO
 
@@ -47,13 +62,17 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `normalize.cpp`: centroid coordinates are **min-max normalized** to prepare for later *quantization* and Z-order encoding. Normalization ensures that the minimum value is $`0`$ and maximum is $`1`$, and all other values scaled proportionally in between. This is done using $`x' = \frac{x-min(x)}{max(x) - min(x)}`$ where $`x`$ is the original value and $`x'`$ the normalized value ([Wikipedia](https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization))).
 
-`comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer). Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even.
+`comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values per dimension, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer. However, a $`30`$-bit Morton code already allows for $`1024^3`$ possible positions in $`3`$-D space, which is more than enough for our purposes. Due to this (and project time constraints), I am assuming no duplicate keys.) Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even.
 
 `sort_zorder.cpp`: see [this repo](https://github.com/yduanmu/parallel_radix_sort).
 
+`cons_radix_seq.cpp`: with $`N`$ leaf nodes in total, the root covers range $`[0, N-1]`$. For some appropriate $`\gamma`$, left child covers $`[0, \gamma]`$ while right child covers $`[\gamma + 1], N-1`$. This is the top-down recursive algorithm for constructing binary radix tree, which terminates when all ranges covered contain only one item (leaf nodes). $`\gamma`$ is chosen according to the highest differing bit within the Morton codes within its given range; this can be done using binary search [Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/).
+
+`cons_radix.cpp:`: uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly $`N-1`$ internal nodes. Determine which range of objects any given node corresponds to, without knowing anything else about the tree. [Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/).
+
 > $`n`$-bit Z-order code of a $`3`$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$. ([VBH17](https://oi.org/10.1145/3105762.3105782)).
 
-In binary raix tree construction, should focus on reducing branches, precomputing prefix lengths, and cache locality. This step uses longest common prefixes and binary search over ranges. On CPU, this has the cons of being branchy, irregular memory access, and difficulty of vectorization. ISA matters least here.
+In binary radix tree construction, should focus on reducing branches, precomputing prefix lengths, and cache locality. This step uses longest common prefixes and binary search over ranges. On CPU, this has the cons of being branchy, irregular memory access, and difficulty of vectorization.
 
 Benchmark both `clang` and `gcc`; Clang might be more aggressive in loop unrolling.
 
