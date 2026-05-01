@@ -13,6 +13,7 @@
 #include "lbvh/comp_zorder.hpp"
 #include "lbvh/sort_zorder.hpp"
 #include "lbvh/sort_zorder_seq.hpp"
+#include "lbvh/cons_radix_seq.hpp"
 
 using std::cout;
 using std::cerr;
@@ -95,6 +96,33 @@ Config parse_args(int argc, char** argv) {
 }
 
 // ====================================================================================
+// BFS tree traversal for printing.
+// ====================================================================================
+void print_tree(const vector<Node>& nodes, const vector<uint32_t>& zcodes,
+				const uint32_t index) {
+	cout << "IDX: " << index << "\n";
+
+	//if leaf
+	if(nodes[index].count == 1) {
+		cout << "\tLEAF: " << std::bitset<32>(zcodes[nodes[index].first_idx]) << endl;
+	}
+
+	if(nodes[index].l_child != INVALID_U32) {
+		cout << "\tLEFT: " << nodes[index].l_child << "\n";
+	}
+	if(nodes[index].r_child != INVALID_U32) {
+		cout << "\tRIGHT: " << nodes[index].r_child << "\n";
+	}
+
+	if(nodes[index].l_child != INVALID_U32) {
+		print_tree(nodes, zcodes, nodes[index].l_child);
+	}
+	if(nodes[index].r_child != INVALID_U32) {
+		print_tree(nodes, zcodes, nodes[index].r_child);
+	}
+}
+
+// ====================================================================================
 // Main.
 // ====================================================================================
 int main(int argc, char** argv) {
@@ -134,7 +162,7 @@ int main(int argc, char** argv) {
 		radix_sort(zcodes, cfg.num_threads);
 	}
 
-	//output
+	//logging
 	if(cfg.logging) {
 		std::ofstream sorted_keys("tests/sorted_keys.txt");
 		if(sorted_keys.is_open()) {
@@ -146,6 +174,23 @@ int main(int argc, char** argv) {
 			cerr << "Unable to open tests/sorted_keys.txt" << std::flush;
 		}
 		cout << "\tnum keys: " << zcodes.size() << endl;
+	}
+
+	// --------------------------------------------------------------------------------
+	// cons_radix
+	// --------------------------------------------------------------------------------
+	vector<Node> nodes;
+
+	//binary tree w/ N leaves has N - 1 internal nodes
+	nodes.reserve(zcodes.size() * 2 - 1);
+
+	if(!cfg.cons_radix || cfg.num_threads <= 1) {
+		build_tree_seq(zcodes, nodes, 0, static_cast<uint32_t>(zcodes.size() - 1));
+	}
+
+	//logging w/ BFS
+	if(cfg.logging) {
+		print_tree(nodes, zcodes, 0);
 	}
 
 	return 0;
