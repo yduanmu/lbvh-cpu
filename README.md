@@ -65,9 +65,11 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 `comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values per dimension, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer. However, a $`30`$-bit Morton code already allows for $`1024^3`$ possible positions in $`3`$-D space\*.) Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even.
 
 > \* We use the Birthday paradox [square approximation](https://en.wikipedia.org/wiki/Birthday_problem#Square_approximation) to calculate the possibility of collision. For $`n`$ points and $`N = 1024^3`$, the approximation is $`\frac{n^2}{2N}`$.
-> - For [`utah_teapot_6k`](https://graphics.cs.utah.edu/teapot/), with $`3,493`$ vertices, the possibility of collision is ~$`0.57`$%.
-> - For [`utah_teapot_33k`](https://graphics.cs.utah.edu/teapot/), with $`17,456`$ vertices, the possibility of collision is ~$`14.19`$%.
-> - For [`bunny_144k`](https://casual-effects.com/data/), with $`72,378`$ vertices, the possibility over collision is **nearly certain**. This is true for every larger model as well.
+> - For [`utah_teapot_6k`](https://graphics.cs.utah.edu/teapot/), with $`3,493`$ vertices, the possibility of collision is quite low.
+> - For [`utah_teapot_33k`](https://graphics.cs.utah.edu/teapot/), with $`17,456`$ vertices, the expected number of collision is still acceptably low at ~$`0.14`$ pairs.
+> - For [`bunny_144k`](https://casual-effects.com/data/), with $`72,378`$ vertices, the expected number of collision pairs is ~$`2.4`$.
+> - For [`hairball_3m`](https://casual-effects.com/data/), with $`1,441,098`$ vertices, the expected number of collision is ~$`967`$ pairs.
+> - For [`powerplant_13m`](https://casual-effects.com/data/), with $`10,614,919`$ vertices, the expected number of collision is $`52469`$ pairs.
 
 `sort_zorder.cpp`: see [this repo](https://github.com/yduanmu/parallel_radix_sort).
 
