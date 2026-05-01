@@ -97,72 +97,51 @@ Config parse_args(int argc, char** argv) {
 }
 
 // ====================================================================================
-// BFS tree traversal for printing.
+// DFS in-order tree traversal for printing.
 // ====================================================================================
 void print_tree(const vector<Node>& nodes, const vector<uint32_t>& zcodes,
-				const uint32_t index, std::ofstream& tree) {
-	tree << "IDX: " << index << "\n";
+				const uint32_t idx, std::ofstream& tree, bool first) {
+	if(!first && idx == 0) {
+		return;
+	}
+
+	if(nodes[idx].l_child != INVALID_U32) {
+		print_tree(nodes, zcodes, nodes[idx].l_child, tree, false);
+	}
 
 	//if leaf
-	if(nodes[index].count == 1) {
-		tree << "\tLEAF: " << std::bitset<32>(zcodes[nodes[index].first_idx]) << endl;
+	if(nodes[idx].count == 1) {
+		tree << std::bitset<32>(zcodes[nodes[idx].first_idx]) << endl;
 	}
 
-	if(nodes[index].l_child != INVALID_U32) {
-		tree << "\tLEFT: " << nodes[index].l_child << "\n";
-	}
-	if(nodes[index].r_child != INVALID_U32) {
-		tree << "\tRIGHT: " << nodes[index].r_child << "\n";
-	}
-
-	if(nodes[index].l_child != INVALID_U32) {
-		print_tree(nodes, zcodes, nodes[index].l_child, tree);
-	}
-	if(nodes[index].r_child != INVALID_U32) {
-		print_tree(nodes, zcodes, nodes[index].r_child, tree);
+	if(nodes[idx].r_child != INVALID_U32) {
+		print_tree(nodes, zcodes, nodes[idx].r_child, tree, false);
 	}
 }
 
 void print_tree_ext(const vector<Node>& leaf_nodes, const vector<Node>& in_nodes,
 					const vector<uint32_t>& zcodes,
-					const uint32_t index, std::ofstream& tree) {
-	tree << "IDX: " << index << "\n";
-	const uint32_t l_child = in_nodes[index].l_child;
-	const uint32_t r_child = in_nodes[index].r_child;
-	bool l_has_child = true;
-	bool r_has_child = true;
-
-	if(l_child == INVALID_U32) {
-		l_has_child = false;
+					const uint32_t idx, std::ofstream& tree, bool first) {
+	if(!first && idx == 0) {
+		return;
 	}
-	if(r_child == INVALID_U32) {
-		r_has_child = false;
+	const uint32_t l_child = in_nodes[idx].l_child;
+	const uint32_t r_child = in_nodes[idx].r_child;
+
+	if(l_child != INVALID_U32 && !in_nodes[idx].l_is_leaf) {
+		print_tree_ext(leaf_nodes, in_nodes, zcodes, l_child, tree, false);
 	}
 
-	tree << "\tCOUNT: " << in_nodes[index].count << "\n";
 	//if leaf
-	if(in_nodes[index].l_is_leaf) {
-		tree << "\tLEAF: "
-			 << std::bitset<32>(zcodes[leaf_nodes[l_child].first_idx]) << endl;
-	} else {
-		if(l_has_child) {
-			tree << "\tLEFT: " << l_child << "\n";
-		}
+	if(in_nodes[idx].l_is_leaf) {
+		tree << std::bitset<32>(zcodes[leaf_nodes[l_child].first_idx]) << endl;
 	}
-	if(in_nodes[index].r_is_leaf) {
-		tree << "\tLEAF: "
-			 << std::bitset<32>(zcodes[leaf_nodes[r_child].first_idx]) << endl;
-	} else {
-		if(r_has_child) {
-			tree << "\tRIGHT: " << r_child << "\n";
-		}
+	if(in_nodes[idx].r_is_leaf) {
+		tree << std::bitset<32>(zcodes[leaf_nodes[r_child].first_idx]) << endl;
 	}
 
-	if(l_has_child && !in_nodes[index].l_is_leaf) {
-		print_tree_ext(leaf_nodes, in_nodes, zcodes, l_child, tree);
-	}
-	if(r_has_child && !in_nodes[index].r_is_leaf) {
-		print_tree_ext(leaf_nodes, in_nodes, zcodes, r_child, tree);
+	if(r_child != INVALID_U32 && !in_nodes[idx].r_is_leaf) {
+		print_tree_ext(leaf_nodes, in_nodes, zcodes, r_child, tree, false);
 	}
 }
 
@@ -245,12 +224,12 @@ int main(int argc, char** argv) {
 		cout << "cons_radix PAR complete: " << elapsed.count() << "us" << endl;
 	}
 
-	//logging w/ BFS
+	//logging w/ DFS
 	if(cfg.logging) {
 		if(!cfg.cons_radix || cfg.num_threads <= 1) {
 			std::ofstream tree("tests/tree.txt");
 			if(tree.is_open()) {
-				print_tree(nodes, zcodes, 0, tree);
+				print_tree(nodes, zcodes, 0, tree, true);
 				tree.close();
 			} else {
 				cerr << "Unable to open tests/tree.txt" << std::flush;
@@ -258,7 +237,7 @@ int main(int argc, char** argv) {
 		} else {
 			std::ofstream tree("tests/tree.txt");
 			if(tree.is_open()) {
-				print_tree_ext(leaf_nodes, in_nodes, zcodes, 0, tree);
+				print_tree_ext(leaf_nodes, in_nodes, zcodes, 0, tree, true);
 				tree.close();
 			} else {
 				cerr << "Unable to open tests/tree.txt" << std::flush;
@@ -266,8 +245,7 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	//if radix tree is constructed correctly, zcodes == BFS(nodes).
-	//in other words, they must be in the same order.
+	//check if radix tree constructed properly
 	if(cfg.logging) {
 		vector<uint32_t> tree_zcodes;
 		tree_zcodes.reserve(zcodes.size());
@@ -276,25 +254,13 @@ int main(int argc, char** argv) {
 		if(tree.is_open()) {
 			std::string line;
 			while(std::getline(tree, line)) {
-				std::size_t pos = line.find("LEAF:");
-				if(pos != std::string::npos) {
-					//extract bit sequence
-					std::string bits = line.substr(pos + 5);
-
-					//trim whitespace
-					bits.erase(0, bits.find_first_not_of(" \t"));
-	           		bits.erase(bits.find_last_not_of(" \t\r\n") + 1);
-
-					uint32_t value = static_cast<uint32_t>(
-							std::stoul(bits, nullptr, 2)
-					);
-					tree_zcodes.push_back(value);
-				}
+				uint32_t value = static_cast<uint32_t>(
+						std::stoul(line, nullptr, 2));
+				tree_zcodes.push_back(value);
 			}
-
-		tree.close();
+			tree.close();
 		} else {
-			cerr << "Unable to open tests/tree.txt" << endl;
+			cerr << "Unable to open tests/tree.txt" << std::flush;
 		}
 
 		bool unequal = false;
@@ -310,6 +276,16 @@ int main(int argc, char** argv) {
 			cout << "\tradix tree IS valid" << endl;
 		} else {
 			cout << "\tradix tree NOT valid" << endl;
+		}
+
+		std::ofstream tree_keys("tests/tree_keys.txt");
+		if(tree_keys.is_open()) {
+			for(uint32_t k : tree_zcodes) {
+				tree_keys << std::bitset<32>(k) << "\n";
+			}
+			tree_keys.close();
+		} else {
+			cerr << "Unable to open tree_keys.txt" << std::flush;
 		}
 	}
 
