@@ -35,20 +35,21 @@ struct Config {
 	bool sort_zorder = true;
 	bool cons_radix = true;
 	bool cons_bvh = true;
+
+	bool logging = true;
 };
 
 void usage() {
-	cerr << "usage:\n"
-			"\t-f <file name>\n"
-			"\t-t <number of threads>\n"
-			"\t 	(default 16. 1 means sequential)\n"
-			"\t		(for sequential BVH construction, see sah.cpp)\n"
-			"\t-c default true flag for parallel Z-order code computation\n"
-	"\t-s default true flag for parallel radix sort\n"
-	"\t 	(if false, uses sequential radix sort)"
-			"\t-r default true flag for parallel construction of binary radix tre>\n"
-			"\t-b default true flag for parallel BVH construction\n"
-			"\t-h print this message";
+	cerr << "Usage. All flags default TRUE (parallel). Toggle for FALSE (sequential):\n"
+			"-f <file name>\n"
+			"-t <number of threads>\n"
+			"\t(default 16. 1 means sequential)\n"
+			"-c Z-order (Morton) code computation\n"
+			"-s radix sort\n"
+			"-r binary radix tree construction\n"
+			"-b BVH construction\n"
+			"-l toggle logging to FALSE (improves execution time)\n"
+			"-h print this message\n";
 
 	exit(0);
 }
@@ -56,7 +57,7 @@ void usage() {
 Config parse_args(int argc, char** argv) {
 	Config cfg;
 	int ch;
-	while ((ch = getopt(argc, argv, "f:t:csrbh")) != -1) {
+	while ((ch = getopt(argc, argv, "f:t:csrblh")) != -1) {
 		try {
 			switch(static_cast<char>(ch)){
 				case 'f':
@@ -76,7 +77,10 @@ Config parse_args(int argc, char** argv) {
 					break;
 				case 'b':
 					cfg.cons_bvh = false;
-break;
+					break;
+				case 'l':
+					cfg.logging = false;
+					break;
 				case 'h':
 				case '?':
 					usage();
@@ -95,7 +99,10 @@ break;
 // ====================================================================================
 int main(int argc, char** argv) {
 	auto cfg = parse_args(argc, argv);
+	// --------------------------------------------------------------------------------
 	// parsing using normalize.cpp > rapidobj
+	// @TODO: create vector<uint32_t> prim_ids.
+	// --------------------------------------------------------------------------------
 	std::optional <PrimitiveData> prim_data = load_tri_obj("models/" + cfg.filename);
 	if(!prim_data) {
 		cerr << "See above error" << endl;
@@ -105,6 +112,7 @@ int main(int argc, char** argv) {
 
 	// --------------------------------------------------------------------------------
 	// comp_zorder
+	// @TODO: keep vector<uint32_t> prim_ids.
 	// --------------------------------------------------------------------------------
 	auto t0 = steady_clock::now();
 	//@TODO: comp_zorder needs a sequential ver.
@@ -118,6 +126,7 @@ int main(int argc, char** argv) {
 
 	// --------------------------------------------------------------------------------
 	// sort_zorder
+	// @TODO: keep vector<uint32_t> prim_ids.
 	// --------------------------------------------------------------------------------
 	if(!cfg.sort_zorder || cfg.num_threads <= 1) {
 		radix_sort_seq(zcodes);
@@ -126,14 +135,17 @@ int main(int argc, char** argv) {
 	}
 
 	//output
-	std::ofstream sorted_keys("tests/sorted_keys.txt");
-	if(sorted_keys.is_open()) {
-		for(uint32_t k : zcodes) {
-			sorted_keys << std::bitset<32>(k) << "\n";
+	if(cfg.logging) {
+		std::ofstream sorted_keys("tests/sorted_keys.txt");
+		if(sorted_keys.is_open()) {
+			for(uint32_t k : zcodes) {
+				sorted_keys << std::bitset<32>(k) << "\n";
+			}
+			sorted_keys.close();
+		} else {
+			cerr << "Unable to open tests/sorted_keys.txt" << std::flush;
 		}
-		sorted_keys.close();
-	} else {
-		cerr << "Unable to open tests/sorted_keys.txt" << std::flush;
+		cout << "\tnum keys: " << zcodes.size() << endl;
 	}
 
 	return 0;

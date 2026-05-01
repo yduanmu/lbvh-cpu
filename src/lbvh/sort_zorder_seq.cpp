@@ -32,7 +32,7 @@ using std::vector;
 using std::uint32_t;
 using std::array;
 using std::chrono::duration_cast;
-using std::chrono::milliseconds;
+using std::chrono::microseconds;
 using std::chrono::steady_clock;
 
 // ====================================================================================
@@ -112,7 +112,7 @@ void radix_sort_seq(vector<uint32_t>& zcodes) {
 	}
 
 	auto t1 = steady_clock::now();
-	auto elapsed = duration_cast<milliseconds>(t1 - t0);
-	std::cout << "sort_zorder_SEQ complete: " << elapsed.count() << std::endl;
+	auto elapsed = duration_cast<microseconds>(t1 - t0);
+	std::cout << "sort_zorder_SEQ complete: " << elapsed.count() << "us" << std::endl;
 } 
 

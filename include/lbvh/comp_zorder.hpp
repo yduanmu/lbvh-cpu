@@ -28,16 +28,6 @@ QCent quantize(const vector<float>& centroid_x, const vector<float>& centroid_y,
 			   const vector<float>& centroid_z, int num_thr);
 
 /**
- * @brief	Utility function to prepare values for being interleaved 3 ways. Expands a
- * 			value by padding two 0s in front of each bit.
- *
- * @param[in]	v	8 unsigned 32-bit ints to process, such as …000ab cdefghij.
- *
- * @return	8 expanded unsigned 32-bit ints, such as 0000a00b 00c00d00 e00f00g0 0h00i00j.
- */
-inline __m256i expand_bits(__m256i v);
-
-/**
  * @brief	Interleaves 3 unsigned 32-bit ints into a single Z-order (Morton) code.
  *
  * @param[in]	qcent	All quantized centroids, unsigned 16-bit ints with 10-bit values.

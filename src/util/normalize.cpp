@@ -13,9 +13,9 @@ using std::uint32_t;
 // ====================================================================================
 // Calculate planar normals via cross product
 // ====================================================================================
-inline Fl3 calc_normal(float x0, float y0, float z0,
-		               float x1, float y1, float z1,
-					   float x2, float y2, float z2) {
+static inline Fl3 calc_normal(float x0, float y0, float z0,
+		               		  float x1, float y1, float z1,
+					   		  float x2, float y2, float z2) {
 	float ux = x1 - x0;
 	float uy = y1 - y0;
 	float uz = z1 - z0;

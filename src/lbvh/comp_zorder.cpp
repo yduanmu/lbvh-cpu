@@ -26,6 +26,7 @@ QCent quantize(const vector<float>& centroid_x, const vector<float>& centroid_y,
 	size_t limit = n - (n % 8);
 	__m256 q = _mm256_set1_ps(mult);
 
+	omp_set_dynamic(0);
 	omp_set_num_threads(num_thr);
 	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < limit; i += 8) {
@@ -70,7 +71,16 @@ QCent quantize(const vector<float>& centroid_x, const vector<float>& centroid_y,
 // ====================================================================================
 // Interleave to form Z-order codes
 // ====================================================================================
-inline __m256i expand_bits(__m256i v) {
+/**
+ * @brief	Utility function to prepare values for being interleaved 3 ways. Expands a
+ * 			value by padding two 0s in front of each bit.
+ *
+ * @param[in]	v	8 unsigned 32-bit ints to process, such as …000ab cdefghij.
+ *
+ * @return	8 expanded unsigned 32-bit ints, such as
+ * 			0000a00b 00c00d00 e00f00g0 0h00i00j.
+ */
+static inline __m256i expand_bits(__m256i v) {
     const __m256i m1 = _mm256_set1_epi32(0x030000FF);
     const __m256i m2 = _mm256_set1_epi32(0x0300F00F);
     const __m256i m3 = _mm256_set1_epi32(0x030C30C3);
@@ -90,6 +100,7 @@ vector<uint32_t> inter_zorder(const QCent& qcent, int num_thr) {
 	zcodes.resize(n);
 
 	size_t limit = n - (n % 8);
+	omp_set_dynamic(0);
 	omp_set_num_threads(num_thr);
 	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < limit; i += 8) {

@@ -9,13 +9,13 @@
 using std::vector;
 using std::uint32_t;
 using std::chrono::duration_cast;
-using std::chrono::milliseconds;
+using std::chrono::microseconds;
 using std::chrono::steady_clock;
 
 // ====================================================================================
 // Radix sort parallelized from eloj's radix_sort_u32.c implementation.
 // ====================================================================================
-void prefix_sums(vector<Count>& offset, vector<Count>& count, size_t num_thr){
+static void prefix_sums(vector<Count>& offset, vector<Count>& count, size_t num_thr){
 	//starts are the beginning offsets of each bucket.
 	size_t start = 0;
 
@@ -161,7 +161,7 @@ void radix_sort(vector<uint32_t>& zcodes, size_t num_thr) {
 	}
 
 	auto t1 = steady_clock::now();
-	auto elapsed = duration_cast<milliseconds>(t1 - t0);
-	std::cout << "sort_zorder PAR complete: " << elapsed.count() << std::endl;
+	auto elapsed = duration_cast<microseconds>(t1 - t0);
+	std::cout << "sort_zorder PAR complete: " << elapsed.count() << "us" << std::endl;
 }
 
