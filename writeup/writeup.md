@@ -11,11 +11,14 @@ A BVH can be constructed meaning that all objects are available before construct
 Primitives need not be triangles, but I have used triangle primitives in this implementation of a BVH.
 
 ## Implementation
-Will copy-paste from README.
 
-`normalize.cpp`: centroid coordinates are **min-max normalized** to prepare for later *quantization* and Z-order encoding. Normalization ensures that the minimum value is $`0`$ and maximum is $`1`$, and all other values scaled proportionally in between. This is done using $`x' = \frac{x-min(x)}{max(x) - min(x)}`$ where $`x`$ is the original value and $`x'`$ the normalized value ([Wikipedia](https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization))).
+### `normalize.cpp`
 
-`comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values per dimension, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer. However, a $`30`$-bit Morton code already allows for $`1024^3`$ possible positions in $`3`$-D space\*.) Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even.
+Centroid coordinates are **min-max normalized** to prepare for later *quantization* and Z-order encoding. Normalization ensures that the minimum value is $`0`$ and maximum is $`1`$, and all other values scaled proportionally in between. This is done using $`x' = \frac{x-min(x)}{max(x) - min(x)}`$ where $`x`$ is the original value and $`x'`$ the normalized value ([Wikipedia](https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization))).
+
+### `comp_zorder.cpp`
+
+Inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values per dimension, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer. However, a $`30`$-bit Morton code already allows for $`1024^3`$ possible positions in $`3`$-D space\*.) Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even.
 
 > $`n`$-bit Z-order code of a $`3`$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$. ([VBH17](https://oi.org/10.1145/3105762.3105782)).
 
@@ -26,9 +29,11 @@ Will copy-paste from README.
 > - For [`hairball_3m`](https://casual-effects.com/data/), with $`1,441,098`$ vertices, the expected number of collision is ~$`967`$ pairs.
 > - For [`powerplant_13m`](https://casual-effects.com/data/), with $`10,614,919`$ vertices, the expected number of collision is ~$`52469`$ pairs.
 
-`sort_zorder.cpp`: parallelized from Eddy Jansson's [radix-sorting](https://github.com/eloj/radix-sorting). The sequential portion is translated to C++ 
+### `sort_zorder.cpp`
 
-I have a fair amount of comments in the code, so it might be worthwhile to jump to that instead. This is more of a summary.
+Parallelized from Eddy Jansson's [radix-sorting](https://github.com/eloj/radix-sorting). The sequential portion is translated to C++ from the [C implementation](https://github.com/eloj/radix-sorting/blob/master/radix_sort_u32.c).
+
+I have a fair amount of comments in the code, so it might be worthwhile to jump to that instead. Below is more of a summary. I spent the longest on the parallel radix sort, and the writeup is my notes (copy-pasted).
 
 For $`t`$ threads, input is split into $`t`$ thread-local contiguous chunks. We use an $`8`$-bit radix, meaning $`4`$ passes per each `uint32_t` key (it is split into $`1`$-byte chunks), and $`256`$ histogram buckets per pass. Histograms are built per-thread.
 
@@ -40,9 +45,13 @@ Once prefix sums are calculated, the pass is sorted in LSD order. The input of n
 
 This entire histogram -> prefix sum -> sorting procedure is done $`4`$ times (passes) in total, once per $`1`$-byte chunk of the $`32`$-bit key. Once all passes are complete, the `vector` has been sorted.
 
-`cons_radix_seq.cpp`: with $`N`$ leaf nodes in total, the root covers range $`[0, N-1]`$. For some appropriate $`\gamma`$, left child covers $`[0, \gamma]`$ while right child covers $`[\gamma + 1, N-1]`$. This is the top-down recursive algorithm for constructing binary radix tree, which terminates when all ranges covered contain only one item (leaf nodes). $`\gamma`$ is chosen according to the highest differing bit within the Morton codes within its given range; this can be done using binary search ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)). This uses `__builtin_clz`, which is available on GCC and Clang. Collisions are handled by the indices, similar to [Kar12a](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf).
+### `cons_radix_seq.cpp`
 
-`cons_radix.cpp:`: uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly $`N-1`$ internal nodes. Determine which range of objects any given node corresponds to, without knowing anything else about the tree. Allocate an array of $`N - 1`$ internal nodes, then process them in parallel ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
+With $`N`$ leaf nodes in total, the root covers range $`[0, N-1]`$. For some appropriate $`\gamma`$, left child covers $`[0, \gamma]`$ while right child covers $`[\gamma + 1, N-1]`$. This is the top-down recursive algorithm for constructing binary radix tree, which terminates when all ranges covered contain only one item (leaf nodes). $`\gamma`$ is chosen according to the highest differing bit within the Morton codes within its given range; this can be done using binary search ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)). This uses `__builtin_clz`, which is available on GCC and Clang. Collisions are handled by the indices, similar to [Kar12a](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf).
+
+### `cons_radix.cpp:`
+
+Uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly $`N-1`$ internal nodes. Determine which range of objects any given node corresponds to, without knowing anything else about the tree. Allocate an array of $`N - 1`$ internal nodes, then process them in parallel ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
 
 ## Results
 Testing machine is [Intel Xeon Gold 5218](https://www.intel.com/content/www/us/en/products/sku/192444/intel-xeon-gold-5218-processor-22m-cache-2-30-ghz/specifications.html). 32 physical cores (2x16), 64 hardware threads. Optimizing for `x86_64`. Targeting AVX2.
