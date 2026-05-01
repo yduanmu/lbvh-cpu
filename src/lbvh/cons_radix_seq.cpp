@@ -5,7 +5,7 @@
 using std::vector;
 using std::uint32_t;
 
-static_assert(alignof(Node) == 32);
+static_assert(alignof(Node) == 64);
 
 // ====================================================================================
 // Find splitting point via clz + binary search.

@@ -15,6 +15,7 @@
 #include "lbvh/sort_zorder_seq.hpp"
 #include "lbvh/cons_radix_seq.hpp"
 #include "lbvh/cons_radix.hpp"
+#include "lbvh/cons_bvh_seq.hpp"
 
 using std::cout;
 using std::cerr;
@@ -121,7 +122,7 @@ void print_tree(const vector<Node>& nodes, const vector<uint32_t>& zcodes,
 
 void print_tree_ext(const vector<Node>& leaf_nodes, const vector<Node>& in_nodes,
 					const vector<uint32_t>& zcodes,
-					const uint32_t idx, std::ofstream& tree, bool first) {
+					const uint32_t idx, std::ofstream& tree, const bool first) {
 	if(!first && idx == 0) {
 		return;
 	}
@@ -204,10 +205,9 @@ int main(int argc, char** argv) {
 	vector<Node> nodes;
 	vector<Node> leaf_nodes, in_nodes;
 
-	//binary tree w/ N leaves has N - 1 internal nodes
-	nodes.reserve(zcodes.size() * 2 - 1);
-
 	if(!cfg.cons_radix || cfg.num_threads <= 1) {
+		//binary tree w/ N leaves has N - 1 internal nodes
+		nodes.reserve(zcodes.size() * 2 - 1);
 		t0 = steady_clock::now();
 		build_tree_seq(zcodes, nodes, 0, static_cast<uint32_t>(zcodes.size() - 1));
 		t1 = steady_clock::now();
@@ -277,6 +277,11 @@ int main(int argc, char** argv) {
 			cout << "\tradix tree NOT valid" << endl;
 		}
 	}
+	
+	// --------------------------------------------------------------------------------
+	// Bounding box calculation.
+	// --------------------------------------------------------------------------------
+	
 
 	return 0;
 }

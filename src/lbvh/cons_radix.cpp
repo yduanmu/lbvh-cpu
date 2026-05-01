@@ -10,7 +10,7 @@ using std::vector;
 using std::uint32_t;
 using std::array;
 
-static_assert(alignof(Node) == 32);
+static_assert(alignof(Node) == 64);
 
 // ====================================================================================
 // Bottom-up radix tree construction.

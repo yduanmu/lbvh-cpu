@@ -7,15 +7,16 @@
 using std::vector;
 using std::uint32_t;
 
-struct alignas(32) Node {
-	uint32_t parent;			//INVALID_U32 if root
-	uint32_t l_child, r_child;	//INVALID_U32 if leaf
-	uint32_t first_idx;			/* Index of 1st key within range; is idx of key if leaf.
-								 * No need to store the code or prim_id; just lookup by
-								 * the zcodes key index.*/
-	uint32_t count;				//num keys covered (1 if leaf)
-	uint32_t split;				//split index when building
-	bool l_is_leaf, r_is_leaf;	//used in parallel cons
+struct alignas(64) Node {
+	uint32_t parent;					//INVALID_U32 if root
+	uint32_t l_child, r_child;			//INVALID_U32 if leaf
+	uint32_t first_idx;					/* Index of 1st key within range; is idx of key
+										   if leaf. */
+	uint32_t count;						//num keys covered (1 if leaf)
+	uint32_t split;						//split index when building
+	float min_x, min_y, min_z;			//bounding box min
+	float max_x, max_y, max_z;			//bounding box max
+	bool l_is_leaf, r_is_leaf;			//used in parallel cons
 };
 
 constexpr uint32_t INVALID_U32 = std::numeric_limits<uint32_t>::max();
