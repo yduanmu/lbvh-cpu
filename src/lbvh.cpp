@@ -151,8 +151,7 @@ void print_tree_ext(const vector<Node>& leaf_nodes, const vector<Node>& in_nodes
 int main(int argc, char** argv) {
 	auto cfg = parse_args(argc, argv);
 	// --------------------------------------------------------------------------------
-	// parsing using normalize.cpp > rapidobj
-	// @TODO: create vector<uint32_t> prim_ids.
+	// Parse using normalize.cpp > rapidobj.
 	// --------------------------------------------------------------------------------
 	std::optional <PrimitiveData> prim_data = load_tri_obj("models/" + cfg.filename);
 	if(!prim_data) {
@@ -162,8 +161,7 @@ int main(int argc, char** argv) {
 	cout << "normalize complete" << endl;
 
 	// --------------------------------------------------------------------------------
-	// comp_zorder
-	// @TODO: keep vector<uint32_t> prim_ids.
+	// Compute Morton keys.
 	// --------------------------------------------------------------------------------
 	auto t0 = steady_clock::now();
 	//@TODO: comp_zorder needs a sequential ver.
@@ -176,13 +174,14 @@ int main(int argc, char** argv) {
 	cout << "comp_zorder PAR complete: " << elapsed.count() << "us" << endl;
 
 	// --------------------------------------------------------------------------------
-	// sort_zorder
-	// @TODO: keep vector<uint32_t> prim_ids.
+	// Sort Morton keys.
+	// prim_id indices are the sorted positions. The value at each index are the
+	// original positions.
 	// --------------------------------------------------------------------------------
 	if(!cfg.sort_zorder || cfg.num_threads <= 1) {
-		radix_sort_seq(zcodes);
+		radix_sort_seq(zcodes, prim_data->prim_id);
 	} else {
-		radix_sort(zcodes, cfg.num_threads);
+		radix_sort(zcodes, cfg.num_threads, prim_data->prim_id);
 	}
 
 	//logging
@@ -200,7 +199,7 @@ int main(int argc, char** argv) {
 	}
 
 	// --------------------------------------------------------------------------------
-	// cons_radix
+	// Construct binary radix tree.
 	// --------------------------------------------------------------------------------
 	vector<Node> nodes;
 	vector<Node> leaf_nodes, in_nodes;

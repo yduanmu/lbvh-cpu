@@ -42,7 +42,6 @@ inline int common_prefix(const vector<uint32_t>& zcodes, int i, int j) {
     return 32 + __builtin_clz(idx_xor);
 }
 
-
 uint32_t find_split(const vector<uint32_t>& zcodes, uint32_t first, uint32_t last);
 
 uint32_t build_tree_seq(const vector<uint32_t>& zcodes, vector<Node>& nodes,

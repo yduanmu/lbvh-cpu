@@ -171,3 +171,4 @@ std::optional <PrimitiveData> load_tri_obj(const std::string& path) {
 						 bmin_x, bmin_y, bmin_z,
 						 bmax_x, bmax_y, bmax_z);
 }
+

@@ -25,7 +25,7 @@ struct QCent {
  * 			10-bit value.
  */
 QCent quantize(const vector<float>& centroid_x, const vector<float>& centroid_y,
-			   const vector<float>& centroid_z, int num_thr);
+			   const vector<float>& centroid_z, const size_t num_thr);
 
 /**
  * @brief	Interleaves 3 unsigned 32-bit ints into a single Z-order (Morton) code.

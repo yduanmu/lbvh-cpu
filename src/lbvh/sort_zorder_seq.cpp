@@ -38,12 +38,13 @@ using std::chrono::steady_clock;
 // ====================================================================================
 // Sequential radix sort from eloj's radix_sort_u32.c, which I converted to C++.
 // ====================================================================================
-void radix_sort_seq(vector<uint32_t>& zcodes) {
+void radix_sort_seq(vector<uint32_t>& zcodes, vector<uint32_t>& prim_id) {
 	auto t0 = steady_clock::now();
 
 	size_t n = zcodes.size();
-	vector<uint32_t> zcodes_aux;
+	vector<uint32_t> zcodes_aux, prim_id_aux;
 	zcodes_aux.resize(n);
+	prim_id_aux.resize(n);
 
 	//Histograms. 1 vector per pass.
 	array<size_t, 256> count0 = {0};
@@ -91,24 +92,28 @@ void radix_sort_seq(vector<uint32_t>& zcodes) {
 		uint32_t key = zcodes[i];
 		size_t dest = count0[key & 0xFF]++;
 		zcodes_aux[dest] = zcodes[i];
+		prim_id_aux[dest] = prim_id[i];
 	}
 
 	for(size_t i = 0; i < n; ++i) {
 		uint32_t key = zcodes_aux[i];
 		size_t dest = count1[(key >> 8) & 0xFF]++;
 		zcodes[dest] = zcodes_aux[i];
+		prim_id[dest] = prim_id_aux[i];
 	}
 
 	for(size_t i = 0; i < n; ++i) {
 		uint32_t key = zcodes[i];
 		size_t dest = count2[(key >> 16) & 0xFF]++;
 		zcodes_aux[dest] = zcodes[i];
+		prim_id_aux[dest] = prim_id[i];
 	}
 
 	for(size_t i = 0; i < n; ++i) {
 		uint32_t key = zcodes_aux[i];
 		size_t dest = count3[(key >> 24) & 0xFF]++;
 		zcodes[dest] = zcodes_aux[i];
+		prim_id[dest] = prim_id_aux[i];
 	}
 
 	auto t1 = steady_clock::now();

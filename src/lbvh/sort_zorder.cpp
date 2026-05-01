@@ -38,11 +38,13 @@ static void prefix_sums(vector<Count>& offset, vector<Count>& count, size_t num_
 	}
 }
 
-void radix_sort(vector<uint32_t>& zcodes, size_t num_thr) {
+void radix_sort(vector<uint32_t>& zcodes, size_t num_thr,
+				vector<uint32_t>& prim_id) {
 	auto t0 = steady_clock::now();
 	size_t n = zcodes.size();
-	vector<uint32_t> zcodes_aux;
+	vector<uint32_t> zcodes_aux, prim_id_aux;
 	zcodes_aux.resize(n);
+	prim_id_aux.resize(n);
 
 	/* Per-thread histograms. Aligned to prevent false sharing. One vector per pass;
 	 * within each vector is the per-thread histogram vector. */
@@ -96,6 +98,7 @@ void radix_sort(vector<uint32_t>& zcodes, size_t num_thr) {
 			uint8_t digit = key & 0xFF;
 			size_t dest = offset0[tid].local[digit] ++;
 			zcodes_aux[dest] = zcodes[i];
+			prim_id_aux[dest] = prim_id[i];
 		}
 		
 		// ------------------------------- Pass 1. ------------------------------------
@@ -116,6 +119,7 @@ void radix_sort(vector<uint32_t>& zcodes, size_t num_thr) {
 			uint8_t digit = (key >> 8) & 0xFF;
 			size_t dest = offset1[tid].local[digit] ++;
 			zcodes[dest] = zcodes_aux[i];
+			prim_id[dest] = prim_id_aux[i];
 		}
 
 		// ------------------------------- Pass 2. ------------------------------------
@@ -136,6 +140,7 @@ void radix_sort(vector<uint32_t>& zcodes, size_t num_thr) {
 			uint8_t digit = (key >> 16) & 0xFF;
 			size_t dest = offset2[tid].local[digit] ++;
 			zcodes_aux[dest] = zcodes[i];
+			prim_id_aux[dest] = prim_id[i];
 		}
 
 		// ------------------------------- Pass 3. ------------------------------------
@@ -156,6 +161,7 @@ void radix_sort(vector<uint32_t>& zcodes, size_t num_thr) {
 			uint8_t digit = (key >> 24) & 0xFF;
 			size_t dest = offset3[tid].local[digit] ++;
 			zcodes[dest] = zcodes_aux[i];
+			prim_id[dest] = prim_id_aux[i];
 		}
 
 	}

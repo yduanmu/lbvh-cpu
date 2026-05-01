@@ -13,7 +13,7 @@ using std::uint16_t;
 // Discretize & Quantize.
 // ====================================================================================
 QCent quantize(const vector<float>& centroid_x, const vector<float>& centroid_y,
-			   const vector<float>& centroid_z, int num_thr) {
+			   const vector<float>& centroid_z, const size_t num_thr) {
 	vector<uint16_t> qcent_x, qcent_y, qcent_z;
 	size_t n = centroid_x.size();
 	qcent_x.resize(n);
