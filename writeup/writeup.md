@@ -57,12 +57,12 @@ Uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly
 Testing machine is [Intel Xeon Gold 5218](https://www.intel.com/content/www/us/en/products/sku/192444/intel-xeon-gold-5218-processor-22m-cache-2-30-ghz/specifications.html). 32 physical cores (2x16), 64 hardware threads. Optimizing for `x86_64`. Targeting AVX2.
 
 ## References
+- [Kar12a](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf) Tero Karras. "Maximizing Parallelism in the Construction of BVHs, Octrees, and k-d Trees." *High Performance Graphics*, 2012.
+- [Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/) Tero Karras. "Thinking Parallel, Part III: Tree Construction on the GPU." *NVIDIA Developer Technical Blog*, 2012.
+    - Referenced for explanation of sequential and parallel binary radix tree construction.
 - [PJH23](https://pbr-book.org) Pharr M., Jakob W., Humphreys G. *Physically Based Rendering: From Theory To Implementation*, 2023.
 - [PL10](https://research.nvidia.com/sites/default/files/pubs/2010-06_HLBVH-Hierarchical-LBVH/HLBVH-final.pdf) Pantaleoni J., Luebke D. "HLBVH: Hierarchical LBVH Construction for Real-Time Ray Tracing of Dynamic Geometry." *High Performance Graphics 2010*, 2010.
-- [Kar12a] Tero Karras. "Maximizing Parallelism in the Construction of BVHs, Octrees, and k-d Trees." *High Performance Graphics*, 2012. ([Link](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf)).
-- [Kar12b] Tero Karras. "Thinking Parallel, Part III: Tree Construction on the GPU." *NVIDIA Developer Technical Blog*, 2012. ([Link](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
-    - Referenced for explanation of sequential and parallel binary radix tree construction.
-- [HH11] Takahiro Harada and Lee Howes. "Introduction to GPU Radix Sort." *Heterogeneous Computing with OpenCL*, 2011. ([Link](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)).
+- [HH11](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf) Takahiro Harada and Lee Howes. "Introduction to GPU Radix Sort." *Heterogeneous Computing with OpenCL*, 2011.
     - Referenced for explanation of parallel radix sort.
 - Eddy Jansson (eloj)'s [radix-sorting](https://github.com/eloj/radix-sorting) for sequential radix sort.
     - I converted Jansson's [C implementation](https://github.com/eloj/radix-sorting/blob/master/radix_sort_u32.c) to C++. Then, I parallelized it by referencing [HH11](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)'s method of count -> prefix scan -> reorder.
