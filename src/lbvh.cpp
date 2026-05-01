@@ -128,20 +128,20 @@ void print_tree_ext(const vector<Node>& leaf_nodes, const vector<Node>& in_nodes
 	const uint32_t l_child = in_nodes[idx].l_child;
 	const uint32_t r_child = in_nodes[idx].r_child;
 
-	if(l_child != INVALID_U32 && !in_nodes[idx].l_is_leaf) {
-		print_tree_ext(leaf_nodes, in_nodes, zcodes, l_child, tree, false);
+	if(l_child != INVALID_U32) {
+		if(in_nodes[idx].l_is_leaf) {
+			tree << std::bitset<32>(zcodes[leaf_nodes[l_child].first_idx]) << endl;
+		} else {
+			print_tree_ext(leaf_nodes, in_nodes, zcodes, l_child, tree, false);
+		}
 	}
 
-	//if leaf
-	if(in_nodes[idx].l_is_leaf) {
-		tree << std::bitset<32>(zcodes[leaf_nodes[l_child].first_idx]) << endl;
-	}
-	if(in_nodes[idx].r_is_leaf) {
-		tree << std::bitset<32>(zcodes[leaf_nodes[r_child].first_idx]) << endl;
-	}
-
-	if(r_child != INVALID_U32 && !in_nodes[idx].r_is_leaf) {
-		print_tree_ext(leaf_nodes, in_nodes, zcodes, r_child, tree, false);
+	if(r_child != INVALID_U32) {
+		if(in_nodes[idx].r_is_leaf) {
+			tree << std::bitset<32>(zcodes[leaf_nodes[r_child].first_idx]) << endl;
+		} else {
+			print_tree_ext(leaf_nodes, in_nodes, zcodes, r_child, tree, false);
+		}
 	}
 }
 
@@ -218,7 +218,7 @@ int main(int argc, char** argv) {
 		leaf_nodes.resize(zcodes.size());
 		in_nodes.resize(zcodes.size() - 1);
 		t0 = steady_clock::now();
-		build_tree(zcodes, leaf_nodes, in_nodes, zcodes.size());
+		build_tree(zcodes, leaf_nodes, in_nodes, zcodes.size(), cfg.num_threads);
 		t1 = steady_clock::now();
 		elapsed = duration_cast<microseconds>(t1 - t0);
 		cout << "cons_radix PAR complete: " << elapsed.count() << "us" << endl;
@@ -276,16 +276,6 @@ int main(int argc, char** argv) {
 			cout << "\tradix tree IS valid" << endl;
 		} else {
 			cout << "\tradix tree NOT valid" << endl;
-		}
-
-		std::ofstream tree_keys("tests/tree_keys.txt");
-		if(tree_keys.is_open()) {
-			for(uint32_t k : tree_zcodes) {
-				tree_keys << std::bitset<32>(k) << "\n";
-			}
-			tree_keys.close();
-		} else {
-			cerr << "Unable to open tree_keys.txt" << std::flush;
 		}
 	}
 

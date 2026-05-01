@@ -80,9 +80,11 @@ static inline array<uint32_t, 2> determine_range(const vector<uint32_t>& zcodes,
 	}
 }
 
-void build_tree(const vector<uint32_t>& zcodes,
-				vector<Node>& leaf_nodes, vector<Node>& in_nodes, const size_t n) {
+void build_tree(const vector<uint32_t>& zcodes, vector<Node>& leaf_nodes,
+					vector<Node>& in_nodes, const size_t n, const size_t num_threads) {
 	//leaf_nodes and in(ternal)_nodes must be properly resized prior to function call.
+	omp_set_num_threads(num_threads);
+	omp_set_dynamic(0);
 	#pragma omp parallel
 	{
 		// --------------------------------------------------------------------------------
@@ -110,6 +112,7 @@ void build_tree(const vector<uint32_t>& zcodes,
 			in_nodes[idx].count = last - first + 1;
 			in_nodes[idx].l_is_leaf = false;
 			in_nodes[idx].r_is_leaf = false;
+			in_nodes[idx].parent = INVALID_U32;
 
 			const uint32_t split = static_cast<uint32_t>(
 				find_split(zcodes, first, last)
