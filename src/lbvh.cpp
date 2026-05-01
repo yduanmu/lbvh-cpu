@@ -19,7 +19,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::chrono::duration_cast;
-using std::chrono::milliseconds;
+using std::chrono::microseconds;
 using std::chrono::steady_clock;
 using std::vector;
 using std::uint32_t;
@@ -99,26 +99,26 @@ Config parse_args(int argc, char** argv) {
 // BFS tree traversal for printing.
 // ====================================================================================
 void print_tree(const vector<Node>& nodes, const vector<uint32_t>& zcodes,
-				const uint32_t index) {
-	cout << "IDX: " << index << "\n";
+				const uint32_t index, std::ofstream& tree) {
+	tree << "IDX: " << index << "\n";
 
 	//if leaf
 	if(nodes[index].count == 1) {
-		cout << "\tLEAF: " << std::bitset<32>(zcodes[nodes[index].first_idx]) << endl;
+		tree << "\tLEAF: " << std::bitset<32>(zcodes[nodes[index].first_idx]) << endl;
 	}
 
 	if(nodes[index].l_child != INVALID_U32) {
-		cout << "\tLEFT: " << nodes[index].l_child << "\n";
+		tree << "\tLEFT: " << nodes[index].l_child << "\n";
 	}
 	if(nodes[index].r_child != INVALID_U32) {
-		cout << "\tRIGHT: " << nodes[index].r_child << "\n";
+		tree << "\tRIGHT: " << nodes[index].r_child << "\n";
 	}
 
 	if(nodes[index].l_child != INVALID_U32) {
-		print_tree(nodes, zcodes, nodes[index].l_child);
+		print_tree(nodes, zcodes, nodes[index].l_child, tree);
 	}
 	if(nodes[index].r_child != INVALID_U32) {
-		print_tree(nodes, zcodes, nodes[index].r_child);
+		print_tree(nodes, zcodes, nodes[index].r_child, tree);
 	}
 }
 
@@ -149,8 +149,8 @@ int main(int argc, char** argv) {
 						   prim_data->centroid_z, cfg.num_threads);
 	vector<uint32_t> zcodes = inter_zorder(qcent, cfg.num_threads);
 	auto t1 = steady_clock::now();
-	auto elapsed = duration_cast<milliseconds>(t1 - t0);
-	cout << "comp_zorder PAR complete: " << elapsed.count() << endl;
+	auto elapsed = duration_cast<microseconds>(t1 - t0);
+	cout << "comp_zorder PAR complete: " << elapsed.count() << "us" << endl;
 
 	// --------------------------------------------------------------------------------
 	// sort_zorder
@@ -185,12 +185,69 @@ int main(int argc, char** argv) {
 	nodes.reserve(zcodes.size() * 2 - 1);
 
 	if(!cfg.cons_radix || cfg.num_threads <= 1) {
+		t0 = steady_clock::now();
 		build_tree_seq(zcodes, nodes, 0, static_cast<uint32_t>(zcodes.size() - 1));
+		t1 = steady_clock::now();
+		elapsed = duration_cast<microseconds>(t1 - t0);
+		cout << "cons_radix_SEQ complete: " << elapsed.count() << "us" << endl;
 	}
 
 	//logging w/ BFS
 	if(cfg.logging) {
-		print_tree(nodes, zcodes, 0);
+		std::ofstream tree("tests/tree.txt");
+		if(tree.is_open()) {
+			print_tree(nodes, zcodes, 0, tree);
+			tree.close();
+		} else {
+			cerr << "Unable to open tests/tree.txt" << std::flush;
+		}
+	}
+
+	//if radix tree is constructed correctly, zcodes == BFS(nodes).
+	//in other words, they must be in the same order.
+	if(cfg.logging) {
+		vector<uint32_t> tree_zcodes;
+		tree_zcodes.reserve(zcodes.size());
+
+		std::ifstream tree("tests/tree.txt");
+		if(tree.is_open()) {
+			std::string line;
+			while(std::getline(tree, line)) {
+				std::size_t pos = line.find("LEAF:");
+				if(pos != std::string::npos) {
+					//extract bit sequence
+					std::string bits = line.substr(pos + 5);
+
+					//trim whitespace
+					bits.erase(0, bits.find_first_not_of(" \t"));
+            		bits.erase(bits.find_last_not_of(" \t\r\n") + 1);
+
+					uint32_t value = static_cast<uint32_t>(
+							std::stoul(bits, nullptr, 2)
+					);
+					tree_zcodes.push_back(value);
+				}
+			}
+
+		tree.close();
+		} else {
+			cerr << "Unable to open tests/tree.txt" << endl;
+		}
+
+		bool unequal = false;
+		for(size_t i = 0; i < zcodes.size(); ++i) {
+			if(zcodes[i] != tree_zcodes[i]) {
+				unequal = true;
+				cout << "\tInequality at zcodes [" << i << "] = "
+					 << zcodes[i] << endl;
+				break;
+			}
+		}
+		if(!unequal) {
+			cout << "\tradix tree IS valid" << endl;
+		} else {
+			cout << "\tradix tree NOT valid" << endl;
+		}
 	}
 
 	return 0;

@@ -43,8 +43,9 @@ perf stat -e L1-dache-loads,L1-dcache-load-misses,L1-icache-load_misses ./build/
 
 - [x] normalize input for testing & debugging, compute Z-order codes.
 - [x] parallel sort; verify correctness & efficiency.
-- [ ] parallel LBVH construction with binary radix tree.
+- [ ] parallel binary radix tree construction.
 - [ ] AABB fitting & BVH construction.
+- [ ] correctness test w/ ray tracing OR write a correctness "proof" per step.
 - [ ] performance debugging and writeup. Keep in mind [benchmarking pitfalls](https://stackoverflow.com/a/60293070/32655769).
 
 ### Optimization TODO
@@ -73,9 +74,9 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `sort_zorder.cpp`: see [this repo](https://github.com/yduanmu/parallel_radix_sort).
 
-`cons_radix_seq.cpp`: with $`N`$ leaf nodes in total, the root covers range $`[0, N-1]`$. For some appropriate $`\gamma`$, left child covers $`[0, \gamma]`$ while right child covers $`[\gamma + 1, N-1]`$. This is the top-down recursive algorithm for constructing binary radix tree, which terminates when all ranges covered contain only one item (leaf nodes). $`\gamma`$ is chosen according to the highest differing bit within the Morton codes within its given range; this can be done using binary search [Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/). This uses `__builtin_clz`, which is available on GCC and Clang.
+`cons_radix_seq.cpp`: with $`N`$ leaf nodes in total, the root covers range $`[0, N-1]`$. For some appropriate $`\gamma`$, left child covers $`[0, \gamma]`$ while right child covers $`[\gamma + 1, N-1]`$. This is the top-down recursive algorithm for constructing binary radix tree, which terminates when all ranges covered contain only one item (leaf nodes). $`\gamma`$ is chosen according to the highest differing bit within the Morton codes within its given range; this can be done using binary search ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)). This uses `__builtin_clz`, which is available on GCC and Clang.
 
-`cons_radix.cpp:`: uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly $`N-1`$ internal nodes. Determine which range of objects any given node corresponds to, without knowing anything else about the tree. [Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/).
+`cons_radix.cpp:`: uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly $`N-1`$ internal nodes. Determine which range of objects any given node corresponds to, without knowing anything else about the tree ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
 
 > $`n`$-bit Z-order code of a $`3`$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$. ([VBH17](https://oi.org/10.1145/3105762.3105782)).
 
