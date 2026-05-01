@@ -38,7 +38,7 @@ struct Config {
 	bool comp_zorder = true;
 	bool sort_zorder = true;
 	bool cons_radix = true;
-	bool cons_bvh = true;
+	// bool cons_bvh = true;
 
 	bool logging = true;
 };
@@ -51,7 +51,7 @@ void usage() {
 			"-c Z-order (Morton) code computation\n"
 			"-s radix sort\n"
 			"-r binary radix tree construction\n"
-			"-b BVH construction\n"
+			// "-b BVH construction\n"
 			"-l toggle logging to FALSE (improves execution time)\n"
 			"-h print this message\n";
 
@@ -61,7 +61,7 @@ void usage() {
 Config parse_args(int argc, char** argv) {
 	Config cfg;
 	int ch;
-	while ((ch = getopt(argc, argv, "f:t:csrblh")) != -1) {
+	while ((ch = getopt(argc, argv, "f:t:csrlh")) != -1) {
 		try {
 			switch(static_cast<char>(ch)){
 				case 'f':
@@ -79,9 +79,9 @@ Config parse_args(int argc, char** argv) {
 				case 'r':
 					cfg.cons_radix = false;
 					break;
-				case 'b':
-					cfg.cons_bvh = false;
-					break;
+				// case 'b':
+				// 	cfg.cons_bvh = false;
+				// 	break;
 				case 'l':
 					cfg.logging = false;
 					break;
