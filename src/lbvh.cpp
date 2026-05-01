@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
 	// --------------------------------------------------------------------------------
 	// Parse using normalize.cpp > rapidobj.
 	// --------------------------------------------------------------------------------
-	std::optional <PrimitiveData> prim_data = load_tri_obj("models/" + cfg.filename);
+	std::optional<PrimitiveData> prim_data = load_tri_obj("models/" + cfg.filename);
 	if(!prim_data) {
 		cerr << "See above error" << endl;
 		return 1;
@@ -281,7 +281,9 @@ int main(int argc, char** argv) {
 	// --------------------------------------------------------------------------------
 	// Bounding box calculation.
 	// --------------------------------------------------------------------------------
-	
+	if(leaf_nodes.size() != 0 && in_nodes.size() != 0) {
+		compute_aabb_seq(leaf_nodes, in_nodes, 0, prim_data.value(), true);
+	}
 
 	return 0;
 }
