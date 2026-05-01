@@ -16,6 +16,7 @@ find_package(OpenMP REQUIRED)
 add_executable(test
 	src/lbvh.cpp
 	src/util/normalize.cpp
+	src/lbvh/comp_zorder_seq.cpp
 	src/lbvh/comp_zorder.cpp
 	src/lbvh/sort_zorder.cpp
 	src/lbvh/sort_zorder_seq.cpp

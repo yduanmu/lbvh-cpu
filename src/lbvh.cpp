@@ -10,6 +10,7 @@
 #include <fstream>
 
 #include "util/normalize.hpp"
+#include "lbvh/comp_zorder_seq.hpp"
 #include "lbvh/comp_zorder.hpp"
 #include "lbvh/sort_zorder.hpp"
 #include "lbvh/sort_zorder_seq.hpp"
@@ -164,15 +165,28 @@ int main(int argc, char** argv) {
 	// --------------------------------------------------------------------------------
 	// Compute Morton keys.
 	// --------------------------------------------------------------------------------
-	auto t0 = steady_clock::now();
-	//@TODO: comp_zorder needs a sequential ver.
-	//@TODO: move timer to the code itself to avoid function call/return overhead.
-	QCent qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
-						   prim_data->centroid_z, cfg.num_threads);
-	vector<uint32_t> zcodes = inter_zorder(qcent, cfg.num_threads);
-	auto t1 = steady_clock::now();
-	auto elapsed = duration_cast<microseconds>(t1 - t0);
-	cout << "comp_zorder PAR complete: " << elapsed.count() << "us" << endl;
+	steady_clock::time_point t0, t1;
+	microseconds elapsed;
+	vector<uint32_t> zcodes;
+	QCent qcent;
+
+	if(!cfg.comp_zorder || cfg.num_threads <= 1) {
+		t0 = steady_clock::now();
+		qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
+							   prim_data->centroid_z, cfg.num_threads);
+		zcodes = inter_zorder(qcent, cfg.num_threads);
+		t1 = steady_clock::now();
+		elapsed = duration_cast<microseconds>(t1 - t0);
+		cout << "comp_zorder_SEQ complete: " << elapsed.count() << "us" << endl;
+	} else {
+		t0 = steady_clock::now();
+		qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
+							   prim_data->centroid_z, cfg.num_threads);
+		zcodes = inter_zorder(qcent, cfg.num_threads);
+		t1 = steady_clock::now();
+		elapsed = duration_cast<microseconds>(t1 - t0);
+		cout << "comp_zorder PAR complete: " << elapsed.count() << "us" << endl;
+	}
 
 	// --------------------------------------------------------------------------------
 	// Sort Morton keys.
@@ -286,6 +300,7 @@ int main(int argc, char** argv) {
 	} else {
 		compute_aabb_seq(leaf_nodes, in_nodes, 0, prim_data.value(), true);
 	}
+	cout << "cons_bvh_SEQ complete" << endl;
 
 	return 0;
 }
