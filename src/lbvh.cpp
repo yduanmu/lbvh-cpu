@@ -16,7 +16,7 @@
 #include "lbvh/sort_zorder_seq.hpp"
 #include "lbvh/cons_radix_seq.hpp"
 #include "lbvh/cons_radix.hpp"
-#include "lbvh/cons_bvh_seq.hpp"
+// #include "lbvh/cons_bvh_seq.hpp"
 
 using std::cout;
 using std::cerr;
@@ -181,8 +181,8 @@ int main(int argc, char** argv) {
 	} else {
 		t0 = steady_clock::now();
 		qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
-							   prim_data->centroid_z, cfg.num_threads);
-		zcodes = inter_zorder(qcent, cfg.num_threads);
+							   prim_data->centroid_z);
+		zcodes = inter_zorder(qcent);
 		t1 = steady_clock::now();
 		elapsed = duration_cast<microseconds>(t1 - t0);
 		cout << "comp_zorder PAR complete: " << elapsed.count() << "us" << endl;
@@ -295,12 +295,12 @@ int main(int argc, char** argv) {
 	// --------------------------------------------------------------------------------
 	// Bounding box calculation.
 	// --------------------------------------------------------------------------------
-	if(nodes.size() != 0) {
-		compute_aabb_seq(nodes, 0, prim_data.value(), true);
-	} else {
-		compute_aabb_seq(leaf_nodes, in_nodes, 0, prim_data.value(), true);
-	}
-	cout << "cons_bvh_SEQ complete" << endl;
+	// if(nodes.size() != 0) {
+	// 	compute_aabb_seq(nodes, 0, prim_data.value(), true);
+	// } else {
+	// 	compute_aabb_seq(leaf_nodes, in_nodes, 0, prim_data.value(), true);
+	// }
+	// cout << "cons_bvh_SEQ complete" << endl;
 
 	return 0;
 }
