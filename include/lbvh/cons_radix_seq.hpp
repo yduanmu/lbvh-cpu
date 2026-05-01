@@ -15,6 +15,7 @@ struct alignas(32) Node {
 								 * the zcodes key index.*/
 	uint32_t count;				//num keys covered (1 if leaf)
 	uint32_t split;				//split index when building
+	bool l_is_leaf, r_is_leaf;	//used in parallel cons
 };
 
 constexpr uint32_t INVALID_U32 = std::numeric_limits<uint32_t>::max();

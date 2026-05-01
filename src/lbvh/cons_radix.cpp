@@ -5,6 +5,8 @@
 #include <array>
 #include <cassert>
 
+#include <iostream>
+
 using std::vector;
 using std::uint32_t;
 using std::array;
@@ -14,40 +16,67 @@ static_assert(alignof(Node) == 32);
 // ====================================================================================
 // Bottom-up radix tree construction.
 // ====================================================================================
-static array<uint32_t, 2> determine_range(const vector<uint32_t>& zcodes,
-								   		  const size_t n, const size_t idx) {
-	/* Determine direction of range +1 or -1 by taking the sign of the
-	 * LCP(i, i+1) - LCP(i, i-1). */
-	assert(idx < n);
-	const int i = zcodes[idx];
-	const int lcp1 = __builtin_clz(i ^ zcodes[idx + 1]);
-	const int lcp2 = __builtin_clz(i ^ zcodes[idx - 1]);
-	int d = -1;	//1 if POS, -1 if NEG
-	if(lcp1 - lcp2 >= 0) {
-		d = 1;
+static inline int common_prefix(const vector<uint32_t>& zcodes, int i, int j) {
+	const int n = static_cast<int>(zcodes.size());
+	if(j < 0 || j >= n) {
+		return -1;
+	}
+	if(i == j) {
+		return 32;	//LCP the entire sequence
 	}
 
-	//compute upper bound of length of range
-	int delta_min = __builtin_clz(i ^ zcodes[(idx + d)]);
-	int l_max = 2;
-	do {
-		l_max <<= 1;
-	} while(__builtin_clz(i ^ zcodes[idx + (l_max * d)]) > delta_min);
+	const uint32_t key_i = zcodes[static_cast<size_t>(i)];
+    const uint32_t key_j = zcodes[static_cast<size_t>(j)];
+    const uint32_t key_xor = key_i ^ key_j;
 
+    if (key_xor != 0) {
+        return __builtin_clz(key_xor);
+    }
+
+    //tie-break duplicate Morton codes by index. i != j here, so idx_xor != 0.
+    const uint32_t idx_xor = static_cast<uint32_t>(i) ^ static_cast<uint32_t>(j);
+    return 32 + __builtin_clz(idx_xor);
+}
+
+static inline array<uint32_t, 2> determine_range(const vector<uint32_t>& zcodes,
+								   				 const size_t n, const size_t idx) {
+	/* Determine direction of range +1 or -1 by taking the sign of the
+	 * LCP(i, i+1) - LCP(i, i-1). */
+	assert(idx < n - 1);
+	const int delta_next = common_prefix(zcodes, idx, idx + 1);
+	const int delta_prev = common_prefix(zcodes, idx, idx - 1);
+	int d = (delta_next - delta_prev >= 0) ? 1 : -1;
+
+	//compute upper bound of length of range
+	int delta_min = common_prefix(zcodes, idx, idx - d);
+	int l_max = 2;
+	while (true) {
+        const int j = idx + l_max * d;
+        if (j < 0 || j >= static_cast<int>(n)) {
+            break;
+        }
+        if (common_prefix(zcodes, idx, j) <= delta_min) {
+            break;
+        }
+        l_max <<= 1;
+    }
+	
 	//find other end using binary search
 	//for t <- {(l_max / 2), (l_max / 4), ..., 1}
 	int l = 0;
 	for(size_t t = l_max >> 1; t > 0; t >>= 1) {
-		if(__builtin_clz(i ^ zcodes[idx + (l + t) * d]) > delta_min) {
-			l += t;
-		}
+		const int j = idx + (l + t) * d;
+        if (j >= 0 && j < static_cast<int>(n)
+				   && common_prefix(zcodes, idx, j) > delta_min) {
+            l += t;
+        }
 	}
-	const int j = i + l * d;
 
-	if(i <= j) {
-		return {static_cast<uint32_t>(i), static_cast<uint32_t>(j)};
+	const size_t j = idx + l * d;
+	if(idx <= j) {
+		return {static_cast<uint32_t>(idx), static_cast<uint32_t>(j)};
 	} else {
-		return {static_cast<uint32_t>(j), static_cast<uint32_t>(i)};
+		return {static_cast<uint32_t>(j), static_cast<uint32_t>(idx)};
 	}
 }
 
@@ -65,6 +94,7 @@ void build_tree(const vector<uint32_t>& zcodes,
 			leaf_nodes[i].l_child = INVALID_U32;
 			leaf_nodes[i].r_child = INVALID_U32;
 			leaf_nodes[i].count = 1;
+			leaf_nodes[i].parent = INVALID_U32;
 		}
 
 		// --------------------------------------------------------------------------------
@@ -78,6 +108,8 @@ void build_tree(const vector<uint32_t>& zcodes,
 			uint32_t last = range[1];
 			in_nodes[idx].first_idx = first;
 			in_nodes[idx].count = last - first + 1;
+			in_nodes[idx].l_is_leaf = false;
+			in_nodes[idx].r_is_leaf = false;
 
 			const uint32_t split = static_cast<uint32_t>(
 				find_split(zcodes, first, last)
@@ -86,36 +118,26 @@ void build_tree(const vector<uint32_t>& zcodes,
 			//select children
 			uint32_t child_a;
 			if(split == first) {	//sub-range has only 1 child -> leaf.
-				child_a = leaf_nodes[split].first_idx;
+				child_a = first;
+				leaf_nodes[child_a].parent = idx;
+				in_nodes[idx].l_is_leaf = true;
 			} else {
 				//child is another internal node, which may or may not exist.
 				child_a = split;
+				in_nodes[child_a].parent = idx;
 			}
+			in_nodes[idx].l_child = child_a;
 
 			uint32_t child_b;
 			if(split + 1 == last) {
-				child_b = leaf_nodes[split + 1].first_idx;
+				child_b = last;
+				leaf_nodes[child_b].parent = idx;
+				in_nodes[idx].r_is_leaf = true;
 			} else {
 				child_b = split + 1;
-			}
-
-			/* Record child relationships. Only gives index. Know whether to check
-			 * leaf_nodes or in_nodes for child by looking at current in_node's
-			 * count. */
-			in_nodes[idx].l_child = child_a;
-			in_nodes[idx].r_child = child_b;
-
-			//record the child's parent relationships
-			if(split == first) {
-				leaf_nodes[child_a].parent = idx;
-			} else {
-				in_nodes[child_a].parent = idx;
-			}
-			if(split + 1 == last) {
-				leaf_nodes[child_b].parent = idx;
-			} else {
 				in_nodes[child_b].parent = idx;
 			}
+			in_nodes[idx].r_child = child_b;
 		}
 	}
 }

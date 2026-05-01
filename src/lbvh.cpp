@@ -127,25 +127,42 @@ void print_tree_ext(const vector<Node>& leaf_nodes, const vector<Node>& in_nodes
 					const vector<uint32_t>& zcodes,
 					const uint32_t index, std::ofstream& tree) {
 	tree << "IDX: " << index << "\n";
+	const uint32_t l_child = in_nodes[index].l_child;
+	const uint32_t r_child = in_nodes[index].r_child;
+	bool l_has_child = true;
+	bool r_has_child = true;
 
+	if(l_child == INVALID_U32) {
+		l_has_child = false;
+	}
+	if(r_child == INVALID_U32) {
+		r_has_child = false;
+	}
+
+	tree << "\tCOUNT: " << in_nodes[index].count << "\n";
 	//if leaf
-	if(in_nodes[index].count == 1) {
+	if(in_nodes[index].l_is_leaf) {
 		tree << "\tLEAF: "
-			 << std::bitset<32>(zcodes[leaf_nodes[index].first_idx]) << endl;
+			 << std::bitset<32>(zcodes[leaf_nodes[l_child].first_idx]) << endl;
+	} else {
+		if(l_has_child) {
+			tree << "\tLEFT: " << l_child << "\n";
+		}
+	}
+	if(in_nodes[index].r_is_leaf) {
+		tree << "\tLEAF: "
+			 << std::bitset<32>(zcodes[leaf_nodes[r_child].first_idx]) << endl;
+	} else {
+		if(r_has_child) {
+			tree << "\tRIGHT: " << r_child << "\n";
+		}
 	}
 
-	if(in_nodes[index].l_child != INVALID_U32) {
-		tree << "\tLEFT: " << in_nodes[index].l_child << "\n";
+	if(l_has_child && !in_nodes[index].l_is_leaf) {
+		print_tree_ext(leaf_nodes, in_nodes, zcodes, l_child, tree);
 	}
-	if(in_nodes[index].r_child != INVALID_U32) {
-		tree << "\tRIGHT: " << in_nodes[index].r_child << "\n";
-	}
-
-	if(in_nodes[index].l_child != INVALID_U32) {
-		print_tree_ext(leaf_nodes, in_nodes, zcodes, in_nodes[index].l_child, tree);
-	}
-	if(in_nodes[index].r_child != INVALID_U32) {
-		print_tree_ext(leaf_nodes, in_nodes, zcodes, in_nodes[index].r_child, tree);
+	if(r_has_child && !in_nodes[index].r_is_leaf) {
+		print_tree_ext(leaf_nodes, in_nodes, zcodes, r_child, tree);
 	}
 }
 
@@ -266,7 +283,7 @@ int main(int argc, char** argv) {
 
 					//trim whitespace
 					bits.erase(0, bits.find_first_not_of(" \t"));
-            		bits.erase(bits.find_last_not_of(" \t\r\n") + 1);
+	           		bits.erase(bits.find_last_not_of(" \t\r\n") + 1);
 
 					uint32_t value = static_cast<uint32_t>(
 							std::stoul(bits, nullptr, 2)
@@ -285,7 +302,7 @@ int main(int argc, char** argv) {
 			if(zcodes[i] != tree_zcodes[i]) {
 				unequal = true;
 				cout << "\tInequality at zcodes [" << i << "] = "
-					 << zcodes[i] << endl;
+					 << std::bitset<32>(zcodes[i]) << endl;
 				break;
 			}
 		}
