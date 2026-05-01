@@ -8,7 +8,7 @@ An implementation of LBVH from [Karras 2012a](https://research.nvidia.com/sites/
 - [References](#references)
 
 ## Usage
-Assumes geometry is already loaded and represented in memory. `util/normalize.cpp` uses the triangulated output from [rapidobj](https://github.com/guybrush77/rapidobj), and discards everything aside from triangle positions and indices. Files parsed using this cannot have references to `mtl`. `util/normalize.cpp` returns a struct `PrimitiveData` of arrays (centroids, primitive ids, and min/max for bounding box computation).
+Assumes geometry is already loaded and represented in memory. `util/normalize.cpp` uses the triangulated output from [rapidobj](https://github.com/guybrush77/rapidobj), and discards everything aside from triangle positions and indices. Files parsed using this cannot have references to `mtl`. `util/normalize.cpp` returns a struct `PrimitiveData` of `vector`s (centroids, primitive ids, and min/max for bounding box computation).
 
 ```
 cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -65,7 +65,7 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values per dimension, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer. However, a $`30`$-bit Morton code already allows for $`1024^3`$ possible positions in $`3`$-D space\*.) Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even.
 
-> \*We use the Birthday paradox [square approximation](https://en.wikipedia.org/wiki/Birthday_problem#Square_approximation) to calculate the expected number of colliding pairs. For $`n`$ points and $`N = 1024^3`$, the approximation is $`\frac{n^2}{2N}`$.
+> \*We use the Birthday Problem [square approximation](https://en.wikipedia.org/wiki/Birthday_problem#Square_approximation) to calculate the expected number of colliding pairs. For $`n`$ points and $`N = 1024^3`$, the approximation is $`\frac{n^2}{2N}`$.
 > - For [`utah_teapot_6k`](https://graphics.cs.utah.edu/teapot/), with $`3,493`$ vertices, the possibility of collision is quite low.
 > - For [`utah_teapot_33k`](https://graphics.cs.utah.edu/teapot/), with $`17,456`$ vertices, the expected number of collision is still acceptably low at ~$`0.14`$ pairs.
 > - For [`bunny_144k`](https://casual-effects.com/data/), with $`72,378`$ vertices, the expected number of collision is ~$`2.4`$ pairs.
@@ -90,6 +90,20 @@ Benchmark both `clang` and `gcc`; Clang might be more aggressive in loop unrolli
     - Referenced for explanation of sequential and parallel binary radix tree construction.
 - Takahiro Harada and Lee Howes. "Introduction to GPU Radix Sort." *Heterogeneous Computing with OpenCL*, 2011. ([Link](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)).
     - Referenced for explanation of parallel radix sort.
-- Eddy Jansson (eloj)'s [radix-sorting](https://github.com/eloj/radix-sorting) for sequential radix sort. I converted Jansson's [C implementation](https://github.com/eloj/radix-sorting/blob/master/radix_sort_u32.c) to C++. Then, I parallelized it by referencing [HH11](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)'s method of count -> prefix scan -> reorder.
-- Slobodan Pavlic (guybrush77)'s [rapidobj](https://github.com/guybrush77/rapidobj) to load and parse obj files for testing, but you should be able to use any obj parser as long as you write your own utility function to clean the output into something usable.
+- Eddy Jansson (eloj)'s [radix-sorting](https://github.com/eloj/radix-sorting) for sequential radix sort.
+    - I converted Jansson's [C implementation](https://github.com/eloj/radix-sorting/blob/master/radix_sort_u32.c) to C++. Then, I parallelized it by referencing [HH11](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)'s method of count -> prefix scan -> reorder.
+- Slobodan Pavlic (guybrush77)'s [rapidobj](https://github.com/guybrush77/rapidobj).
+    - Used to load and parse obj files for testing.
+- Morgan McGuire, Computer Graphics Archive, July 2017 ([https://casual-effects.com/data/](https://casual-effects.com/data/)). I used "Bunny", "Hairball", and "Power Plant" as testing models.
+    - Greg Turk and Marc Levoy. "Zippered Polygon Meshes from Range Images." *SIGGRAPH 94*, pp. 311–318, 1994. ([Link](https://faculty.cc.gatech.edu/~turk/bunny/bunny.html)).
+    - Samuli Laine and Tero Karras. "Two Methods for Fast Ray-Cast Ambient Occlusion." *Eurographics Symposium on Rendering 2010*, 2010. ([Link](https://research.nvidia.com/publication/2010-06_two-methods-fast-ray-cast-ambient-occlusion)).
+    - Morgan McGuire and Guedis Cardenas. "Power Plant", 1999. ([Casual Effects link](https://casual-effects.com/data/)).
+- Cem Yuksel. "The Utah Teapot," Computer Graphics at the University of Utah, 2025. ([Link](https://graphics.cs.utah.edu/teapot/)).
+    - I use models of resolution 16 for `utah_teapot_33k` and resolution 7 for `utah_teapot_6k`.
+- Modest3D. "Violine Highpoly," 2025. ([Link](https://sketchfab.com/3d-models/violine-highpoly-b1445e20bca8462fbdfdb8659bf46a48)).
+    - I use this for `violin_and_bow_2m`.
+- archiwum_xyz. "600-year-old dead oak - ENT 11," 2026. ([Link](https://sketchfab.com/3d-models/600-year-old-dead-oak-ent-11-58af8f53d922413ca28ff28cf9359a9f)).
+    - I use this for `oak_1m`.
+- "Birthday Problem." Wikipedia, retrieved in April 2026. ([Link](https://en.wikipedia.org/wiki/Birthday_problem)).
+- "Feature Scaling." Wikipedia, retrieved in April 2026. ([Link](https://en.wikipedia.org/wiki/Feature_scaling)).
 
