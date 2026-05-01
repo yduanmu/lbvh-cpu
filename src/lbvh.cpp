@@ -281,7 +281,9 @@ int main(int argc, char** argv) {
 	// --------------------------------------------------------------------------------
 	// Bounding box calculation.
 	// --------------------------------------------------------------------------------
-	if(leaf_nodes.size() != 0 && in_nodes.size() != 0) {
+	if(nodes.size() != 0) {
+		compute_aabb_seq(nodes, 0, prim_data.value(), true);
+	} else {
 		compute_aabb_seq(leaf_nodes, in_nodes, 0, prim_data.value(), true);
 	}
 
