@@ -1,11 +1,11 @@
 # lbvh-cpu
-An implementation of LBVH from [Karras 2012a](https://doi.org/10.2312/EGGH/HPG12/033-037). Parallel on the CPU.
+An implementation of LBVH from [Karras 2012a](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf). Parallel on the CPU.
 
 ## Table of contents
 - [Usage](#usage)
 - [TODO](#todo)
 - [Notes](#notes)
-- [Dependencies](#dependencies)
+- [References](#references)
 
 ## Usage
 Assumes geometry is already loaded and represented in memory. `util/normalize.cpp` uses the triangulated output from [rapidobj](https://github.com/guybrush77/rapidobj), and discards everything aside from triangle positions and indices. Files parsed using this cannot have references to `mtl`. `util/normalize.cpp` returns a struct `PrimitiveData` of arrays (centroids, primitive ids, and min/max for bounding box computation).
@@ -84,6 +84,12 @@ In binary radix tree construction, should focus on reducing branches, precomputi
 
 Benchmark both `clang` and `gcc`; Clang might be more aggressive in loop unrolling.
 
-## Dependencies
-I use [rapidobj](https://github.com/guybrush77/rapidobj) to load and parse obj files for testing, but you should be able to use any obj parser as long as you write your own utility function to clean the output into something usable.
+## References
+- Tero Karras. "Maximizing Parallelism in the Construction of BVHs, Octrees, and k-d Trees." *High Performance Graphics*, 2012. ([Link](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf)).
+- Tero Karras. "Thinking Parallel, Part III: Tree Construction on the GPU." *NVIDIA Developer Technical Blog*, 2012. ([Link](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
+    - Referenced for explanation of sequential and parallel binary radix tree construction.
+- Takahiro Harada and Lee Howes. "Introduction to GPU Radix Sort." *Heterogeneous Computing with OpenCL*, 2011. ([Link](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)).
+    - Referenced for explanation of parallel radix sort.
+- Eddy Jansson (eloj)'s [radix-sorting](https://github.com/eloj/radix-sorting) for sequential radix sort. I converted Jansson's [C implementation](https://github.com/eloj/radix-sorting/blob/master/radix_sort_u32.c) to C++. Then, I parallelized it by referencing [HH11](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)'s method of count -> prefix scan -> reorder.
+- Slobodan Pavlic (guybrush77)'s [rapidobj](https://github.com/guybrush77/rapidobj) to load and parse obj files for testing, but you should be able to use any obj parser as long as you write your own utility function to clean the output into something usable.
 
