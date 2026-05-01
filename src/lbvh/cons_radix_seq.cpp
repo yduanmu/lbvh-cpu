@@ -1,4 +1,4 @@
-#include <lbvh/cons_radix_seq.hpp>
+#include "lbvh/cons_radix_seq.hpp"
 #include <cstdint>
 #include <vector>
 
@@ -12,15 +12,7 @@ static_assert(alignof(Node) == 32);
 // Converted to CPU-friendly C++ from Kar12b (see README).
 // ====================================================================================
 uint32_t find_split(const vector<uint32_t>& zcodes, uint32_t first, uint32_t last) {
-	const uint32_t first_key = zcodes[first];
-	const uint32_t last_key = zcodes[last];
-
-	//identical morton codes -> split range in middle
-	if(first_key == last_key) {
-		return static_cast<uint32_t>((first + last) >> 1);
-	}
-
-	const int common_prefix = __builtin_clz(first_key ^ last_key);
+	const int lcp = common_prefix(zcodes, first, last);
 
 	/* Binary search to find where next bit differs. Looking for highest key that
 	 * shares more than common_prefix bits with the first key.*/
@@ -32,9 +24,8 @@ uint32_t find_split(const vector<uint32_t>& zcodes, uint32_t first, uint32_t las
 		const uint32_t new_split = split + step;	//proposed new position
 		
 		if(new_split < last) {
-			const uint32_t split_key = zcodes[new_split];
-			const int split_prefix = __builtin_clz(first_key ^ split_key);
-			if(split_prefix > common_prefix) {
+			const int split_prefix = common_prefix(zcodes, first, new_split);
+			if(split_prefix > lcp) {
 				split = new_split;	//accept proposal
 			}
 		}

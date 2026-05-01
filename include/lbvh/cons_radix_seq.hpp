@@ -20,6 +20,28 @@ struct alignas(32) Node {
 
 constexpr uint32_t INVALID_U32 = std::numeric_limits<uint32_t>::max();
 
+inline int common_prefix(const vector<uint32_t>& zcodes, int i, int j) {
+	const int n = static_cast<int>(zcodes.size());
+	if(j < 0 || j >= n) {
+		return -1;
+	}
+	if(i == j) {
+		return 32;	//LCP the entire sequence
+	}
+
+	const uint32_t key_i = zcodes[static_cast<size_t>(i)];
+    const uint32_t key_j = zcodes[static_cast<size_t>(j)];
+    const uint32_t key_xor = key_i ^ key_j;
+
+    if (key_xor != 0) {
+        return __builtin_clz(key_xor);
+    }
+
+    //tie-break duplicate Morton codes by index. i != j here, so idx_xor != 0.
+    const uint32_t idx_xor = static_cast<uint32_t>(i) ^ static_cast<uint32_t>(j);
+    return 32 + __builtin_clz(idx_xor);
+}
+
 
 uint32_t find_split(const vector<uint32_t>& zcodes, uint32_t first, uint32_t last);
 
