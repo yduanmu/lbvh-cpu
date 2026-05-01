@@ -1,14 +1,9 @@
 #include <lbvh/cons_radix_seq.hpp>
 #include <cstdint>
 #include <vector>
-// #include <chrono>
 
 using std::vector;
 using std::uint32_t;
-// using std::chrono::duration_cast;
-// using std::chrono::microseconds;
-// using std::chrono::steady_clock;
-
 
 static_assert(alignof(Node) == 32);
 
@@ -16,8 +11,7 @@ static_assert(alignof(Node) == 32);
 // Find splitting point via clz + binary search.
 // Converted to CPU-friendly C++ from Kar12b (see README).
 // ====================================================================================
-static uint32_t find_split(const vector<uint32_t>& zcodes,
-						   uint32_t first, uint32_t last) {
+uint32_t find_split(const vector<uint32_t>& zcodes, uint32_t first, uint32_t last) {
 	const uint32_t first_key = zcodes[first];
 	const uint32_t last_key = zcodes[last];
 
@@ -75,7 +69,7 @@ uint32_t build_tree_seq(const vector<uint32_t>& zcodes, vector<Node>& nodes,
 
 	//calculate appropriate ranges of left and right child
 	const uint32_t split = static_cast<uint32_t>(
-			find_split(zcodes, first, last)
+		find_split(zcodes, first, last)
 	);
 	node.split = split;
 

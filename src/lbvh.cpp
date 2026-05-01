@@ -14,6 +14,7 @@
 #include "lbvh/sort_zorder.hpp"
 #include "lbvh/sort_zorder_seq.hpp"
 #include "lbvh/cons_radix_seq.hpp"
+#include "lbvh/cons_radix.hpp"
 
 using std::cout;
 using std::cerr;
@@ -122,6 +123,32 @@ void print_tree(const vector<Node>& nodes, const vector<uint32_t>& zcodes,
 	}
 }
 
+void print_tree_ext(const vector<Node>& leaf_nodes, const vector<Node>& in_nodes,
+					const vector<uint32_t>& zcodes,
+					const uint32_t index, std::ofstream& tree) {
+	tree << "IDX: " << index << "\n";
+
+	//if leaf
+	if(in_nodes[index].count == 1) {
+		tree << "\tLEAF: "
+			 << std::bitset<32>(zcodes[leaf_nodes[index].first_idx]) << endl;
+	}
+
+	if(in_nodes[index].l_child != INVALID_U32) {
+		tree << "\tLEFT: " << in_nodes[index].l_child << "\n";
+	}
+	if(in_nodes[index].r_child != INVALID_U32) {
+		tree << "\tRIGHT: " << in_nodes[index].r_child << "\n";
+	}
+
+	if(in_nodes[index].l_child != INVALID_U32) {
+		print_tree_ext(leaf_nodes, in_nodes, zcodes, in_nodes[index].l_child, tree);
+	}
+	if(in_nodes[index].r_child != INVALID_U32) {
+		print_tree_ext(leaf_nodes, in_nodes, zcodes, in_nodes[index].r_child, tree);
+	}
+}
+
 // ====================================================================================
 // Main.
 // ====================================================================================
@@ -180,6 +207,7 @@ int main(int argc, char** argv) {
 	// cons_radix
 	// --------------------------------------------------------------------------------
 	vector<Node> nodes;
+	vector<Node> leaf_nodes, in_nodes;
 
 	//binary tree w/ N leaves has N - 1 internal nodes
 	nodes.reserve(zcodes.size() * 2 - 1);
@@ -190,16 +218,34 @@ int main(int argc, char** argv) {
 		t1 = steady_clock::now();
 		elapsed = duration_cast<microseconds>(t1 - t0);
 		cout << "cons_radix_SEQ complete: " << elapsed.count() << "us" << endl;
+	} else {
+		leaf_nodes.resize(zcodes.size());
+		in_nodes.resize(zcodes.size() - 1);
+		t0 = steady_clock::now();
+		build_tree(zcodes, leaf_nodes, in_nodes, zcodes.size());
+		t1 = steady_clock::now();
+		elapsed = duration_cast<microseconds>(t1 - t0);
+		cout << "cons_radix PAR complete: " << elapsed.count() << "us" << endl;
 	}
 
 	//logging w/ BFS
 	if(cfg.logging) {
-		std::ofstream tree("tests/tree.txt");
-		if(tree.is_open()) {
-			print_tree(nodes, zcodes, 0, tree);
-			tree.close();
+		if(!cfg.cons_radix || cfg.num_threads <= 1) {
+			std::ofstream tree("tests/tree.txt");
+			if(tree.is_open()) {
+				print_tree(nodes, zcodes, 0, tree);
+				tree.close();
+			} else {
+				cerr << "Unable to open tests/tree.txt" << std::flush;
+			}
 		} else {
-			cerr << "Unable to open tests/tree.txt" << std::flush;
+			std::ofstream tree("tests/tree.txt");
+			if(tree.is_open()) {
+				print_tree_ext(leaf_nodes, in_nodes, zcodes, 0, tree);
+				tree.close();
+			} else {
+				cerr << "Unable to open tests/tree.txt" << std::flush;
+			}
 		}
 	}
 

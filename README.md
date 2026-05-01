@@ -1,5 +1,5 @@
 # lbvh-cpu
-An implementation of LBVH from [Karras 2012a](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf). Parallel on the CPU.
+An implementation of LBVH from Karras 2012 [Kar12a](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf). Parallel on the CPU.
 
 ## Table of contents
 - [Usage](#usage)
@@ -65,6 +65,8 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `comp_zorder.cpp`: inner loop vectorized (SIMD) and outer loop with OpenMP. By this stage, the centroids have been normalized, and now we want to **quantize** them in order to be able to place them discretely into the Z-order curve grid. We do this by choosing a *bit resolution* for the Z-order codes. For example, $`10`$ bits per dimension allows for $`1024`$ discrete values per dimension, and a $`30`$-bit Z-order code that can be encoded as a $`32`$-bit integer. (Another option is $`21`$ bits per dimension for a $`63`$-bit Z-order code encoded as a $`64`$-bit integer. However, a $`30`$-bit Morton code already allows for $`1024^3`$ possible positions in $`3`$-D space\*.) Quantize the `float`s to `int`s by $`x_{int} = \lfloor x_{fl} * (2^{n} - 1) \rfloor`$ where $`n`$ is the bit resolution. In practice, I use `_mm256_cvtps_epi32` which rounds to nearest and ties to even.
 
+> $`n`$-bit Z-order code of a $`3`$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$. ([VBH17](https://oi.org/10.1145/3105762.3105782)).
+
 > \*We use the Birthday Problem [square approximation](https://en.wikipedia.org/wiki/Birthday_problem#Square_approximation) to calculate the expected number of colliding pairs. For $`n`$ points and $`N = 1024^3`$, the approximation is $`\frac{n^2}{2N}`$.
 > - For [`utah_teapot_6k`](https://graphics.cs.utah.edu/teapot/), with $`3,493`$ vertices, the possibility of collision is quite low.
 > - For [`utah_teapot_33k`](https://graphics.cs.utah.edu/teapot/), with $`17,456`$ vertices, the expected number of collision is still acceptably low at ~$`0.14`$ pairs.
@@ -76,19 +78,15 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `cons_radix_seq.cpp`: with $`N`$ leaf nodes in total, the root covers range $`[0, N-1]`$. For some appropriate $`\gamma`$, left child covers $`[0, \gamma]`$ while right child covers $`[\gamma + 1, N-1]`$. This is the top-down recursive algorithm for constructing binary radix tree, which terminates when all ranges covered contain only one item (leaf nodes). $`\gamma`$ is chosen according to the highest differing bit within the Morton codes within its given range; this can be done using binary search ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)). This uses `__builtin_clz`, which is available on GCC and Clang.
 
-`cons_radix.cpp:`: uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly $`N-1`$ internal nodes. Determine which range of objects any given node corresponds to, without knowing anything else about the tree ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
-
-> $`n`$-bit Z-order code of a $`3`$-D vector $`v = (v_{x}, v_{y}, v_{z}) \in \langle 0, 1 \rangle ^{3}`$ is computed by first determining the quantized coordinates $`v^{*} = {v^{*}_{x}, v^{*}_{y}, v^{*}_{z}} \in \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle \times \langle 0, 2^{n/3} \rangle`$. The Z-order code is then evaluated by interleaving bits of the components of $`v^{*}`$. ([VBH17](https://oi.org/10.1145/3105762.3105782)).
-
-In binary radix tree construction, should focus on reducing branches, precomputing prefix lengths, and cache locality. This step uses longest common prefixes and binary search over ranges. On CPU, this has the cons of being branchy, irregular memory access, and difficulty of vectorization.
+`cons_radix.cpp:`: uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly $`N-1`$ internal nodes. Determine which range of objects any given node corresponds to, without knowing anything else about the tree. Allocate an array of $`N - 1`$ internal nodes, then process them in parallel ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
 
 Benchmark both `clang` and `gcc`; Clang might be more aggressive in loop unrolling.
 
 ## References
-- Tero Karras. "Maximizing Parallelism in the Construction of BVHs, Octrees, and k-d Trees." *High Performance Graphics*, 2012. ([Link](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf)).
-- Tero Karras. "Thinking Parallel, Part III: Tree Construction on the GPU." *NVIDIA Developer Technical Blog*, 2012. ([Link](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
+- [Kar12a] Tero Karras. "Maximizing Parallelism in the Construction of BVHs, Octrees, and k-d Trees." *High Performance Graphics*, 2012. ([Link](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf)).
+- [Kar12b] Tero Karras. "Thinking Parallel, Part III: Tree Construction on the GPU." *NVIDIA Developer Technical Blog*, 2012. ([Link](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
     - Referenced for explanation of sequential and parallel binary radix tree construction.
-- Takahiro Harada and Lee Howes. "Introduction to GPU Radix Sort." *Heterogeneous Computing with OpenCL*, 2011. ([Link](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)).
+- [HH11] Takahiro Harada and Lee Howes. "Introduction to GPU Radix Sort." *Heterogeneous Computing with OpenCL*, 2011. ([Link](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)).
     - Referenced for explanation of parallel radix sort.
 - Eddy Jansson (eloj)'s [radix-sorting](https://github.com/eloj/radix-sorting) for sequential radix sort.
     - I converted Jansson's [C implementation](https://github.com/eloj/radix-sorting/blob/master/radix_sort_u32.c) to C++. Then, I parallelized it by referencing [HH11](https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf)'s method of count -> prefix scan -> reorder.
@@ -102,7 +100,7 @@ Benchmark both `clang` and `gcc`; Clang might be more aggressive in loop unrolli
     - I use models of resolution 16 for `utah_teapot_33k` and resolution 7 for `utah_teapot_6k`.
 - Modest3D. "Violine Highpoly," 2025. ([Link](https://sketchfab.com/3d-models/violine-highpoly-b1445e20bca8462fbdfdb8659bf46a48)).
     - I use this for `violin_and_bow_2m`.
-- archiwum_xyz. "600-year-old dead oak - ENT 11," 2026. ([Link](https://sketchfab.com/3d-models/600-year-old-dead-oak-ent-11-58af8f53d922413ca28ff28cf9359a9f)).
+- archiwum_xyz. "600-year-old dead oak - ENT 11," 2025. ([Link](https://sketchfab.com/3d-models/600-year-old-dead-oak-ent-11-58af8f53d922413ca28ff28cf9359a9f)).
     - I use this for `oak_1m`.
 - "Birthday Problem." Wikipedia, retrieved in April 2026. ([Link](https://en.wikipedia.org/wiki/Birthday_problem)).
 - "Feature Scaling." Wikipedia, retrieved in April 2026. ([Link](https://en.wikipedia.org/wiki/Feature_scaling)).

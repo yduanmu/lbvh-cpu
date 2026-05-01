@@ -20,6 +20,7 @@ add_executable(test
 	src/lbvh/sort_zorder.cpp
 	src/lbvh/sort_zorder_seq.cpp
 	src/lbvh/cons_radix_seq.cpp
+	src/lbvh/cons_radix.cpp
 )
 target_include_directories(test PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test PRIVATE OpenMP::OpenMP_CXX)
