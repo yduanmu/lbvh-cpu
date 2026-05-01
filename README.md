@@ -36,21 +36,16 @@ Usage. All flags default TRUE (parallel). Toggle for FALSE (sequential):
 ```
 
 ```
-perf stat -e L1-dache-loads,L1-dcache-load-misses,L1-icache-load_misses ./build/bin/test -f "utah_teapot_33k.obj" -t 30
+perf stat -e L1-dcache-loads,L1-dcache-load-misses,L1-icache-load_misses ./build/bin/test -f "utah_teapot_33k.obj" -t 30
 ```
 
 ## TODO
 
 - [x] normalize input for testing & debugging, compute Z-order codes.
 - [x] parallel sort; verify correctness & efficiency.
-- [ ] parallel binary radix tree construction.
+- [x] parallel binary radix tree construction.
 - [ ] AABB fitting & BVH construction.
-- [ ] correctness test w/ ray tracing OR write a correctness "proof" per step.
-- [ ] performance debugging and writeup. Keep in mind [benchmarking pitfalls](https://stackoverflow.com/a/60293070/32655769).
-
-### Optimization TODO
-
-- [ ] Align the `vector<float>`s within `PrimitiveData` with a custom 32-byte aligned allocator and benchmark using `_mm256_load_ps` instead of `_mm256_loadu_ps` in `comp_zorder.cpp`. "On most modern CPUs there isn't a difference, so unless you know your data is aligned it's better to use unaligned versions" ([Vulkan Guide](https://vkguide.dev/docs/extra-chapter/intro_to_simd/)).
+- [x] performance debugging and writeup. Keep in mind [benchmarking pitfalls](https://stackoverflow.com/a/60293070/32655769).
 
 > [!NOTE]
 > `normalize.cpp` is completely sequential and unoptimized since it won't be benchmarked. I will go back for it if I have time.
@@ -76,7 +71,7 @@ Since 2-socket NUMA, remember to pin threads per socket and allocate memory per 
 
 `sort_zorder.cpp`: see [this repo](https://github.com/yduanmu/parallel_radix_sort).
 
-`cons_radix_seq.cpp`: with $`N`$ leaf nodes in total, the root covers range $`[0, N-1]`$. For some appropriate $`\gamma`$, left child covers $`[0, \gamma]`$ while right child covers $`[\gamma + 1, N-1]`$. This is the top-down recursive algorithm for constructing binary radix tree, which terminates when all ranges covered contain only one item (leaf nodes). $`\gamma`$ is chosen according to the highest differing bit within the Morton codes within its given range; this can be done using binary search ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)). This uses `__builtin_clz`, which is available on GCC and Clang.
+`cons_radix_seq.cpp`: with $`N`$ leaf nodes in total, the root covers range $`[0, N-1]`$. For some appropriate $`\gamma`$, left child covers $`[0, \gamma]`$ while right child covers $`[\gamma + 1, N-1]`$. This is the top-down recursive algorithm for constructing binary radix tree, which terminates when all ranges covered contain only one item (leaf nodes). $`\gamma`$ is chosen according to the highest differing bit within the Morton codes within its given range; this can be done using binary search ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)). This uses `__builtin_clz`, which is available on GCC and Clang. Collisions are handled by the indices, similar to [Kar12a](https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf).
 
 `cons_radix.cpp:`: uses the invariant that any binary tree with $`N`$ leaf nodes always has exactly $`N-1`$ internal nodes. Determine which range of objects any given node corresponds to, without knowing anything else about the tree. Allocate an array of $`N - 1`$ internal nodes, then process them in parallel ([Kar12b](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)).
 

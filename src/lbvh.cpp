@@ -152,6 +152,9 @@ void print_tree_ext(const vector<Node>& leaf_nodes, const vector<Node>& in_nodes
 // ====================================================================================
 int main(int argc, char** argv) {
 	auto cfg = parse_args(argc, argv);
+
+	constexpr int BENCH_RUNS = 8;
+
 	// --------------------------------------------------------------------------------
 	// Parse using normalize.cpp > rapidobj.
 	// --------------------------------------------------------------------------------
@@ -167,25 +170,53 @@ int main(int argc, char** argv) {
 	// --------------------------------------------------------------------------------
 	steady_clock::time_point t0, t1;
 	microseconds elapsed;
+
 	vector<uint32_t> zcodes;
 	QCent qcent;
 
 	if(!cfg.comp_zorder || cfg.num_threads <= 1) {
-		t0 = steady_clock::now();
-		qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
-							   prim_data->centroid_z, cfg.num_threads);
-		zcodes = inter_zorder(qcent, cfg.num_threads);
-		t1 = steady_clock::now();
-		elapsed = duration_cast<microseconds>(t1 - t0);
-		cout << "comp_zorder_SEQ complete: " << elapsed.count() << "us" << endl;
+		long long total_us = 0;
+
+		for(int run = 0; run < BENCH_RUNS; ++run) {
+			t0 = steady_clock::now();
+
+			qcent = quantize(
+				prim_data->centroid_x,
+				prim_data->centroid_y,
+				prim_data->centroid_z
+			);
+			zcodes = inter_zorder(qcent);
+
+			t1 = steady_clock::now();
+			elapsed = duration_cast<microseconds>(t1 - t0);
+			total_us += elapsed.count();
+		}
+
+		double avg_us = static_cast<double>(total_us) / BENCH_RUNS;
+		cout << "comp_zorder_SEQ complete avg over " << BENCH_RUNS
+			 << " runs: " << avg_us << "us" << endl;
 	} else {
-		t0 = steady_clock::now();
-		qcent = quantize(prim_data->centroid_x, prim_data->centroid_y,
-							   prim_data->centroid_z);
-		zcodes = inter_zorder(qcent);
-		t1 = steady_clock::now();
-		elapsed = duration_cast<microseconds>(t1 - t0);
-		cout << "comp_zorder PAR complete: " << elapsed.count() << "us" << endl;
+		long long total_us = 0;
+
+		for(int run = 0; run < BENCH_RUNS; ++run) {
+			t0 = steady_clock::now();
+
+			qcent = quantize(
+				prim_data->centroid_x,
+				prim_data->centroid_y,
+				prim_data->centroid_z,
+				cfg.num_threads
+			);
+			zcodes = inter_zorder(qcent, cfg.num_threads);
+
+			t1 = steady_clock::now();
+			elapsed = duration_cast<microseconds>(t1 - t0);
+			total_us += elapsed.count();
+		}
+
+		double avg_us = static_cast<double>(total_us) / BENCH_RUNS;
+		cout << "comp_zorder PAR complete avg over " << BENCH_RUNS
+			 << " runs: " << avg_us << "us" << endl;
 	}
 
 	// --------------------------------------------------------------------------------
@@ -199,7 +230,7 @@ int main(int argc, char** argv) {
 		radix_sort(zcodes, cfg.num_threads, prim_data->prim_id);
 	}
 
-	//logging
+	// logging
 	if(cfg.logging) {
 		std::ofstream sorted_keys("tests/sorted_keys.txt");
 		if(sorted_keys.is_open()) {
@@ -217,27 +248,66 @@ int main(int argc, char** argv) {
 	// Construct binary radix tree.
 	// --------------------------------------------------------------------------------
 	vector<Node> nodes;
-	vector<Node> leaf_nodes, in_nodes;
+	vector<Node> leaf_nodes;
+	vector<Node> in_nodes;
 
 	if(!cfg.cons_radix || cfg.num_threads <= 1) {
-		//binary tree w/ N leaves has N - 1 internal nodes
-		nodes.reserve(zcodes.size() * 2 - 1);
-		t0 = steady_clock::now();
-		build_tree_seq(zcodes, nodes, 0, static_cast<uint32_t>(zcodes.size() - 1));
-		t1 = steady_clock::now();
-		elapsed = duration_cast<microseconds>(t1 - t0);
-		cout << "cons_radix_SEQ complete: " << elapsed.count() << "us" << endl;
+		long long total_us = 0;
+
+		for(int run = 0; run < BENCH_RUNS; ++run) {
+			nodes.clear();
+
+			// Binary tree with N leaves has N - 1 internal nodes.
+			nodes.reserve(zcodes.size() * 2 - 1);
+
+			t0 = steady_clock::now();
+
+			build_tree_seq(
+				zcodes,
+				nodes,
+				0,
+				static_cast<uint32_t>(zcodes.size() - 1)
+			);
+
+			t1 = steady_clock::now();
+			elapsed = duration_cast<microseconds>(t1 - t0);
+			total_us += elapsed.count();
+		}
+
+		double avg_us = static_cast<double>(total_us) / BENCH_RUNS;
+		cout << "cons_radix_SEQ complete avg over " << BENCH_RUNS
+			 << " runs: " << avg_us << "us" << endl;
 	} else {
-		leaf_nodes.resize(zcodes.size());
-		in_nodes.resize(zcodes.size() - 1);
-		t0 = steady_clock::now();
-		build_tree(zcodes, leaf_nodes, in_nodes, zcodes.size(), cfg.num_threads);
-		t1 = steady_clock::now();
-		elapsed = duration_cast<microseconds>(t1 - t0);
-		cout << "cons_radix PAR complete: " << elapsed.count() << "us" << endl;
+		long long total_us = 0;
+
+		for(int run = 0; run < BENCH_RUNS; ++run) {
+			leaf_nodes.clear();
+			in_nodes.clear();
+
+			leaf_nodes.resize(zcodes.size());
+			in_nodes.resize(zcodes.size() - 1);
+
+			t0 = steady_clock::now();
+
+			build_tree(
+				zcodes,
+				leaf_nodes,
+				in_nodes,
+				zcodes.size(),
+				cfg.num_threads
+			);
+
+			t1 = steady_clock::now();
+			elapsed = duration_cast<microseconds>(t1 - t0);
+			total_us += elapsed.count();
+		}
+
+		double avg_us = static_cast<double>(total_us) / BENCH_RUNS;
+		cout << "cons_radix PAR complete avg over " << BENCH_RUNS
+			 << " runs: " << avg_us << "us" << endl;
 	}
 
-	//logging w/ DFS
+	// logging w/ DFS
 	if(cfg.logging) {
 		if(!cfg.cons_radix || cfg.num_threads <= 1) {
 			std::ofstream tree("tests/tree.txt");
@@ -258,7 +328,7 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	//check if radix tree constructed properly
+	// Check if radix tree constructed properly.
 	if(cfg.logging) {
 		vector<uint32_t> tree_zcodes;
 		tree_zcodes.reserve(zcodes.size());
@@ -268,7 +338,8 @@ int main(int argc, char** argv) {
 			std::string line;
 			while(std::getline(tree, line)) {
 				uint32_t value = static_cast<uint32_t>(
-						std::stoul(line, nullptr, 2));
+					std::stoul(line, nullptr, 2)
+				);
 				tree_zcodes.push_back(value);
 			}
 			tree.close();
@@ -285,13 +356,13 @@ int main(int argc, char** argv) {
 				break;
 			}
 		}
+
 		if(!unequal) {
 			cout << "\tradix tree IS valid" << endl;
 		} else {
 			cout << "\tradix tree NOT valid" << endl;
 		}
 	}
-	
 	// --------------------------------------------------------------------------------
 	// Bounding box calculation.
 	// --------------------------------------------------------------------------------
